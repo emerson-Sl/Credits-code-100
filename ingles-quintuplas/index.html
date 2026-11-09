@@ -63,8 +63,8 @@ p{margin:0}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:.78rem;font-weight:700;background:var(--surface2)}
 /* abas */
 nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);z-index:5}
-nav.tabs .in{display:grid;grid-template-columns:repeat(6,1fr);width:100%;max-width:560px}
-nav.tabs button{background:none;border:0;padding:9px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.72rem;color:var(--muted);font-weight:700}
+nav.tabs .in{display:grid;grid-template-columns:repeat(7,1fr);width:100%;max-width:560px}
+nav.tabs button{background:none;border:0;padding:9px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.66rem;color:var(--muted);font-weight:700}
 nav.tabs button .d{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-size:.75rem;color:#fff;opacity:.55}
 nav.tabs button[aria-selected="true"]{color:var(--fg)}
 nav.tabs button[aria-selected="true"] .d{opacity:1}
@@ -92,6 +92,19 @@ textarea{resize:vertical;min-height:48px}
 .unit.done .n{color:var(--ok)}
 .unit div{min-width:0}
 .tr{color:var(--muted);font-size:.9rem}
+.affs{display:flex;flex-direction:column;gap:10px}
+.aff{display:flex;gap:10px;align-items:center}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.badge{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;padding:10px 6px;border-radius:14px;background:var(--surface2);font-size:.75rem;font-weight:700;color:var(--muted);opacity:.6}
+.badge.on{opacity:1;color:var(--fg)}
+.badge .bi{font-size:1.5rem;line-height:1}
+.vn-stage{--sc:var(--accent);position:relative;border-radius:20px;padding:14px;min-height:340px;display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);background:linear-gradient(180deg,color-mix(in srgb,var(--sc) 22%,var(--surface)) 0%,var(--surface) 70%)}
+.vn-sprite{flex:1;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px}
+.vn-box{background:color-mix(in srgb,var(--bg) 88%,transparent);border:1px solid var(--line);border-radius:16px;padding:22px 14px 14px;position:relative}
+.vn-name{position:absolute;top:-13px;left:14px;color:#fff;font-weight:700;font-size:.85rem;padding:3px 12px;border-radius:99px}
+.vn-text{font-size:1.12rem;line-height:1.7;margin:0}
+.w{background:none;border:0;padding:0 1px;margin:0;font:inherit;color:inherit;border-bottom:1px dotted var(--muted);cursor:pointer}
+.w:active{background:var(--surface2)}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:14px;background:var(--surface2)}
 .seg button{border:0;background:none;border-radius:10px;padding:9px 6px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
 .seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg)}
@@ -130,6 +143,7 @@ const TABS=[
   {id:"aula",label:"Aula",s:"itsuki"},
   {id:"cartas",label:"Cartas",s:"miku"},
   {id:"conversa",label:"Conversa",s:"yotsuba"},
+  {id:"leitura",label:"Leitura",s:"nino"},
   {id:"ouvir",label:"Ônibus",s:"ichika"},
   {id:"escrita",label:"Escrita",s:"nino"}
 ];
@@ -193,6 +207,10 @@ const dkey=(d=new Date())=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.get
 const addDays=(k,n)=>{const [y,m,d]=k.split("-").map(Number);return dkey(new Date(y,m-1,d+n))};
 const diffDays=(a,b)=>{const p=k=>{const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d)};return Math.round((p(b)-p(a))/864e5)};
 let S={xp:0,start:dkey(),cards:{},done:{},tests:[],lastTeacher:"nino"};
+// campos novos (afinidade, estatísticas, caderno de erros, conquistas, cartinhas, cartas da leitura)
+function ensureS(){for(const [k,v] of [["aff",{}],["stats",null],["errors",[]],["ach",{}],["letters",[]],["custom",[]],["photos",{}],["cards",{}],["done",{}],["tests",[]]])if(S[k]==null)S[k]=v===null?null:JSON.parse(JSON.stringify(v));
+  if(!S.stats){S.stats={};for(const d of Object.values(DAYS))for(const [a,n] of Object.entries(d.acts||{}))S.stats[a]=(S.stats[a]||0)+n;
+    if(!Object.keys(S.aff).length){const map={aula:["itsuki",20],cartas:["miku",2],conversa:["yotsuba",3],onibus:["ichika",3],escrita:["nino",3]};for(const [a,n] of Object.entries(S.stats))if(map[a])S.aff[map[a][0]]=(S.aff[map[a][0]]||0)+n*map[a][1]}}}
 let DAYS={}; // dkey -> {xp,min,acts}
 let db=null, sample=null, assets=null, tab="inicio", mode="local";
 
@@ -220,9 +238,14 @@ const blockDone=(b,k)=>TASKS.filter(t=>t.block===b).every(t=>taskDone(t,k));
 function daySummary(k){return {tarde:blockDone("tarde",k),onibus:blockDone("onibus",k),feitas:TASKS.filter(t=>taskDone(t,k)).length,total:TASKS.length}}
 const isWeekend=(d=new Date())=>d.getDay()===0||d.getDay()===6;
 
-function gain(xp,act){
+const ACT_SIS={aula:"itsuki",cartas:"miku",onibus:"ichika",escrita:"nino",leitura:"nino",fala:"yotsuba",revisao:"itsuki",teste:"itsuki"};
+function gain(xp,act,sis){
+  ensureS();
   const k=dkey();const d=DAYS[k]||(DAYS[k]={xp:0,min:0,acts:{}});
   d.xp+=xp;d.acts[act]=(d.acts[act]||0)+1;S.xp+=xp;
+  S.stats[act]=(S.stats[act]||0)+1;
+  const s=sis||ACT_SIS[act];if(s)addAff(s,xp);
+  checkAch();
   saveDay(k);saveState();
 }
 // tempo de estudo: conta minutos com a página visível e alguma interação no último minuto
@@ -245,7 +268,7 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 let voice=null;
 function pickVoice(){try{const v=speechSynthesis.getVoices();voice=v.find(x=>/en[-_]US/i.test(x.lang)&&/female|samantha|google/i.test(x.name))||v.find(x=>/^en/i.test(x.lang))||null}catch(e){}}
 try{speechSynthesis.onvoiceschanged=pickVoice;pickVoice()}catch(e){}
-function speak(t,rate=0.9){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=rate;if(voice)u.voice=voice;speechSynthesis.speak(u)}catch(e){toast("Seu navegador não tem voz em inglês")}}
+function speak(t,rate=0.9){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=Math.min(2,rate*((typeof VOICE_PREF!=="undefined"&&VOICE_PREF.rate)||1));const pv=typeof VOICE_PREF!=="undefined"&&VOICE_PREF.name&&speechSynthesis.getVoices().find(v=>v.name===VOICE_PREF.name);if(pv)u.voice=pv;else if(voice)u.voice=voice;speechSynthesis.speak(u)}catch(e){toast("Seu navegador não tem voz em inglês")}}
 const norm=s=>s.toLowerCase().replace(/[’']/g,"'").replace(/[^a-z0-9' ]/g," ").replace(/\s+/g," ").trim();
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 
@@ -255,7 +278,7 @@ function renderTabs(){
 }
 document.addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b){if(b.dataset.mode)busMode=b.dataset.mode;go(b.dataset.tab)}});
 function go(t){tab=t;try{speechSynthesis.cancel()}catch(e){}renderTabs();render();scrollTo(0,0);if(location.hash!=="#"+t)history.replaceState(null,"","#"+t)}
-function render(){({inicio:vHome,aula:vAula,cartas:vCartas,conversa:vConversa,ouvir:()=>{busMode="ditado";vOuvir()},escrita:()=>{busMode="escrita";vEscrita()},teste:vTeste}[tab]||vHome)()}
+function render(){({inicio:vHome,aula:vAula,cartas:vCartas,conversa:vConversa,ouvir:()=>{busMode="ditado";vOuvir()},escrita:()=>{busMode="escrita";vEscrita()},leitura:vLeitura,revisao:vRevisao,mensagens:vMensagens,teste:vTeste}[tab]||vHome)()}
 
 function homeMessage(){
   const st=streak(),now=new Date(),m=now.getHours()*60+now.getMinutes(),k=dkey(),we=isWeekend(now);
@@ -277,10 +300,13 @@ function taskRow(t){const p=taskProg(t),ok=p>=t.need;return `<button class="slot
 function blockHtml(b,we){const B=BLOCKS[b],done=blockDone(b);return `<div style="display:flex;flex-direction:column;gap:8px"><div class="row" style="justify-content:space-between"><h3>${B.name}${we?"":` · <span style="font-variant-numeric:tabular-nums">${B.wk}</span>`}</h3>${done?`<span class="small" style="color:var(--ok);font-weight:700">bloco concluído</span>`:""}</div>${TASKS.filter(t=>t.block===b).map(taskRow).join("")}</div>`}
 function vHome(){
   const [who,text]=homeMessage(),st=streak(),nt=nextTest(),dd=diffDays(dkey(),nt);
-  const sm=daySummary(dkey()),we=isWeekend();
+  const sm=daySummary(dkey()),we=isWeekend();ensureS();checkAch();
+  const unread=S.letters.filter(x=>!x.read).slice(-2);
   $("#view").innerHTML=`
   <div style="display:flex;flex-direction:column;gap:16px">
     ${msg(who,`<p>${text}</p>`)}
+    ${unread.map(x=>msg(x.s,`<p class="small muted">💌 Afinidade nível ${x.l}</p><p>${esc(x.text)}</p>`)).join("")}
+    ${unread.length?`<button class="btn line" data-tab="mensagens" style="align-self:flex-start">Ver todas as mensagens</button>`:""}
     <section class="panel" aria-label="Progresso">
       <div class="stats">
         <div class="stat"><span class="eyebrow">Sequência</span><b>${st}</b><span class="small muted">${st===1?"dia":"dias"}</span></div>
@@ -293,7 +319,20 @@ function vHome(){
       <div class="row" style="justify-content:space-between"><h2>Tarefas de hoje</h2><span class="chip">${we?"Fim de semana · livre":"Seg a sex"}</span></div>
       ${blockHtml("tarde",we)}
       ${blockHtml("onibus",we)}
+      <div style="display:flex;flex-direction:column;gap:8px"><h3>Extra</h3>
+        <button class="slot" data-tab="leitura"><span class="stripe" style="background:var(--nino)"></span><div style="flex:1"><b>Leitura da Nino</b><div class="small muted">cena de visual novel com escolhas</div></div><span class="chip">${((DAYS[dkey()]||{}).acts||{}).leitura||0} hoje</span></button>
+        <button class="slot" data-tab="revisao"><span class="stripe" style="background:var(--itsuki)"></span><div style="flex:1"><b>Caderno de erros${new Date().getDay()===0?" · revisão de domingo":""}</b><div class="small muted">revise o que a Yotsuba e a Nino corrigiram</div></div><span class="chip" style="${openErrors().length&&new Date().getDay()===0?"background:var(--itsuki);color:#fff":""}">${openErrors().length} para revisar</span></button>
+      </div>
       <p class="small muted">Lembretes: ${we?"12:31 · 14:01 · 16:01 · 18:01 · 21:01 (cobrança)":"13:55 · 14:01 · 17:57 · 21:01 (cobrança)"}</p>
+    </section>
+    <section class="panel">
+      <div class="row" style="justify-content:space-between"><h2>Afinidade</h2><button class="btn line" style="padding:5px 12px" data-tab="mensagens">💌 Mensagens (${S.letters.length})</button></div>
+      <div class="affs">${Object.keys(SIS).map(k=>{const a=affInfo(k);return `<div class="aff">${ava(k)}<div style="flex:1;min-width:0"><div class="row" style="justify-content:space-between"><b>${SIS[k].name}</b><span class="small muted" style="font-variant-numeric:tabular-nums">Nv ${a.l}${a.next?` · ${a.p}/${a.next}`:" · máx."}</span></div><div class="bar"><span style="width:${a.pct}%;background:${SIS[k].c}"></span></div></div></div>`}).join("")}</div>
+      <p class="small muted">Cada irmã ganha afinidade com as tarefas dela. A cada nível novo, ela te manda uma mensagem.</p>
+    </section>
+    <section class="panel">
+      <div class="row" style="justify-content:space-between"><h2>Conquistas</h2><span class="chip">${Object.keys(S.ach).length}/${ACH.length}</span></div>
+      <div class="badges">${ACH.map(a=>`<div class="badge ${S.ach[a.id]?"on":""}"><span class="bi">${S.ach[a.id]?a.i:"🔒"}</span><span>${esc(a.t)}</span></div>`).join("")}</div>
     </section>
     <section class="panel">
       <div class="row" style="justify-content:space-between"><h2>Teste de nível</h2><span class="chip">${S.tests.length?esc(S.tests[S.tests.length-1].level):"sem nota"}</span></div>
@@ -303,16 +342,18 @@ function vHome(){
     </section>
     <section class="panel">
       <h3>A meta</h3>
-      <p class="muted small">Jogar <i>The Quintessential Quintuplets: Five Memories Spent With You</i> (PS4) em inglês e entender os finais de cada irmã. O jogo é quase todo leitura, então leitura e vocabulário de diálogo vêm primeiro. Escuta e fala vêm junto.</p>
+      <p class="muted small">Aprender inglês de verdade, para ler, ouvir e falar no dia a dia. A motivação extra: um dia jogar <i>The Quintessential Quintuplets: Five Memories Spent With You</i> em inglês e ver todos os finais.</p>
     </section>
     <section class="panel">
       <h2>Fotos das professoras</h2>
       <p class="small muted">Escolha uma imagem do seu celular para cada irmã. Ela aparece no lugar da letra, no app todo.</p>
       ${assets?Object.keys(SIS).map(k=>`<div class="row">${ava(k)}<b style="flex:1;min-width:0">${SIS[k].name}</b><label class="btn ghost" style="padding:7px 12px" for="ph-${k}">${ph(k)?"Trocar":"Escolher foto"}</label><input type="file" accept="image/*" id="ph-${k}" data-ph="${k}" hidden>${ph(k)?`<button class="btn line" style="padding:7px 12px" data-rm="${k}">Tirar</button>`:""}</div>`).join(""):`<p class="small muted">Para escolher as fotos, abra a página logado na sua conta do Claude.</p>`}
     </section>
+    ${voiceHtml()}
     <p class="small muted" style="text-align:center">${mode==="db"?"Progresso salvo na sua conta.":"Progresso salvo só neste aparelho."}</p>
   </div>`;
   $("#goTest").onclick=()=>{testState=null;go("teste")};
+  bindVoice();
   document.querySelectorAll("[data-ph]").forEach(inp=>inp.onchange=async()=>{
     const f=inp.files&&inp.files[0],k=inp.dataset.ph;if(!f||!assets)return;
     if(!/^image\//.test(f.type)){toast("Escolha um arquivo de imagem");return}
@@ -382,7 +423,7 @@ function vLesson(){
     <div class="bar"><span style="width:${lessonPos/L.exercises.length*100}%"></span></div>
     <section class="panel"><h3>${esc(ex.q)}</h3><div class="opts">${ex.options.map((o,i)=>`<button class="opt" data-o="${i}">${esc(o)}</button>`).join("")}</div><div id="fb"></div></section></div>`;
   document.querySelectorAll("[data-o]").forEach(b=>b.onclick=()=>{
-    const i=+b.dataset.o,ok=i===ex.answer;if(ok)lessonScore++;
+    const i=+b.dataset.o,ok=i===ex.answer;if(ok)lessonScore++;else addError({src:"aula",wrong:ex.options[i],right:ex.options[ex.answer],pt:ex.q,note:ex.explain});
     document.querySelectorAll("[data-o]").forEach(x=>{x.disabled=true;if(+x.dataset.o===ex.answer)x.classList.add("right")});if(!ok)b.classList.add("wrong");
     $("#fb").innerHTML=`<div class="feedback"><b style="color:${ok?"var(--ok)":"var(--bad)"}">${ok?"Isso!":"Quase."}</b> ${esc(ex.explain)}</div><button class="btn full" id="nx" style="margin-top:10px">Próximo</button>`;
     $("#nx").onclick=()=>{lessonPos++;vLesson()};
@@ -393,7 +434,7 @@ function vLesson(){
 const BOX_DAYS=[0,1,3,7,14,30];
 function dueCards(){
   const k=dkey(),seen=[],fresh=[];
-  for(const c of DECK){const st=S.cards[c.id];if(st){if(st.due<=k)seen.push(c)}else fresh.push(c)}
+  for(const c of allCards()){const st=S.cards[c.id];if(st){if(st.due<=k)seen.push(c)}else if(c.cat==="leitura")fresh.unshift(c);else fresh.push(c)}
   const newToday=Object.values(S.cards).filter(s=>s.first===k).length;
   return seen.concat(fresh.slice(0,Math.max(0,10-newToday)));
 }
@@ -402,12 +443,12 @@ function vCartas(){
   if(!cq) cq=shuffle(dueCards());
   const learned=Object.values(S.cards).filter(s=>s.box>=3).length;
   if(!cq.length){
-    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${msg("miku",`<p>Acabaram as cartas de hoje… Você já domina <b>${learned}</b> de ${DECK.length} palavras. Volte amanhã, as que você errou vão aparecer de novo.</p>`)}<button class="btn ghost" id="more">Treinar mais 5 palavras novas</button></div>`;
-    $("#more").onclick=()=>{cq=shuffle(DECK.filter(c=>!S.cards[c.id])).slice(0,5);vCartas()};return;
+    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${msg("miku",`<p>Acabaram as cartas de hoje… Você já domina <b>${learned}</b> de ${allCards().length} palavras. Volte amanhã, as que você errou vão aparecer de novo.</p>`)}<button class="btn ghost" id="more">Treinar mais 5 palavras novas</button></div>`;
+    $("#more").onclick=()=>{cq=shuffle(allCards().filter(c=>!S.cards[c.id])).slice(0,5);vCartas()};return;
   }
   const c=cq[0];
   $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
-    <div class="row" style="justify-content:space-between"><span class="eyebrow">${cq.length} restantes · ${esc(c.cat)}</span><span class="chip">${learned}/${DECK.length} dominadas</span></div>
+    <div class="row" style="justify-content:space-between"><span class="eyebrow">${cq.length} restantes · ${esc(c.cat)}</span><span class="chip">${learned}/${allCards().length} dominadas</span></div>
     <button class="card" id="card" aria-label="Virar carta">
       <span class="word">${esc(c.en)}</span>
       ${flip?`<span style="font-size:1.15rem;font-weight:700">${esc(c.pt)}</span><span class="ex">${esc(c.ex)}</span>`:`<span class="muted small">Toque para ver o significado</span>`}
@@ -430,8 +471,10 @@ function vCartas(){
 let chatWho="yotsuba",chat=[],chatBusy=false;
 const OPEN={yotsuba:"Hi! I'm Yotsuba! How are you today?",nino:"Hmph. You're late. What did you do today?",miku:"Hi… do you like history? …What do you like?",itsuki:"Good afternoon. Did you eat lunch? What did you eat?",ichika:"Hey, little tutor. Tell me about your day."};
 function vConversa(){
+  if(convMode==="fala")return vFala();
   if(!chat.length) chat=[{role:"assistant",reply:OPEN[chatWho],translation:"",correction:""}];
   $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">
+    ${convSeg()}
     <div class="pick" role="group" aria-label="Com quem conversar">${Object.keys(SIS).map(k=>`<button aria-pressed="${k===chatWho}" data-who="${k}">${ava(k)}${SIS[k].name}</button>`).join("")}</div>
     <div class="chat" id="chat">${chat.map(chatHtml).join("")}</div>
     ${!sample?`<div class="panel"><p class="small muted">A conversa usa a IA e precisa ser aberta no app do Claude, com a sua conta. As outras abas funcionam normalmente.</p></div>`:""}
@@ -441,7 +484,7 @@ function vConversa(){
       <div class="row"><button class="btn" id="send" ${!sample||chatBusy?"disabled":""}>Enviar</button><button class="btn ghost" id="help" ${!sample||chatBusy?"disabled":""}>Não sei responder</button><button class="btn line" id="reset">Recomeçar</button></div>
     </div></div>`;
   document.querySelectorAll("[data-who]").forEach(b=>b.onclick=()=>{chatWho=b.dataset.who;chat=[];vConversa()});
-  $("#reset").onclick=()=>{chat=[];vConversa()};
+  bindConvSeg();$("#reset").onclick=()=>{chat=[];vConversa()};
   const ta=$("#say");
   $("#send").onclick=()=>sendChat(ta.value.trim());
   $("#help").onclick=()=>sendChat("(Não sei como responder. Me dê uma resposta modelo simples para eu copiar e explique.)",true);
@@ -458,7 +501,7 @@ async function sendChat(text,isHelp){
   if(!text||chatBusy||!sample)return;
   chat.push(isHelp?{role:"user",text:"🤔 Não sei responder"}:{role:"user",text});
   chat.push({role:"assistant",pending:true});chatBusy=true;vConversa();
-  const sys=`Você é ${SIS[chatWho].name} Nakano, de The Quintessential Quintuplets. Personalidade: ${SIS[chatWho].vibe}. Você conversa em inglês com um aluno brasileiro iniciante (lê melhor do que escuta e fala) para ele praticar. Regras: responda em inglês MUITO simples, 1 a 2 frases curtas, e termine com uma pergunta fácil para ele continuar. Não fale de conteúdo adulto. Se a mensagem dele tiver erro de inglês ou palavras em português, mostre a forma correta em "correction" (em português, curto e gentil, citando a frase certa em inglês); se estiver certa, deixe "correction" vazio. Se ele pedir ajuda, dê em "model" uma resposta modelo simples. Responda SOMENTE com JSON: {"reply":string,"translation":string (tradução da sua reply para português),"correction":string,"model":string}`;
+  const sys=`Você é ${SIS[chatWho].name} Nakano, de The Quintessential Quintuplets. Personalidade: ${SIS[chatWho].vibe}. Você conversa em inglês com um aluno brasileiro iniciante (lê melhor do que escuta e fala) para ele praticar. Regras: responda em inglês MUITO simples, 1 a 2 frases curtas, e termine com uma pergunta fácil para ele continuar. Não fale de conteúdo adulto. Se a mensagem dele tiver erro de inglês ou palavras em português, mostre a forma correta em "correction" (em português, curto e gentil, citando a frase certa em inglês); se estiver certa, deixe "correction" vazio. Se ele pedir ajuda, dê em "model" uma resposta modelo simples. Responda SOMENTE com JSON: {"reply":string,"translation":string (tradução da sua reply para português),"correction":string,"corrected":string (a mensagem do aluno reescrita em inglês correto; vazio se já estiver certa),"model":string}`;
   const hist=chat.filter(m=>!m.pending).slice(-12);
   const msgs=[{role:"user",content:sys+"\n\nComece a conversa."}];
   for(const m of hist){if(m.role==="assistant")msgs.push({role:"assistant",content:JSON.stringify({reply:m.reply})});else msgs.push({role:"user",content:m.text==="🤔 Não sei responder"?text:m.text})}
@@ -466,7 +509,8 @@ async function sendChat(text,isHelp){
   try{
     const r=await sample.json(msgs,{modelTier:"quick",cache:false});
     chat.pop();chat.push({role:"assistant",reply:String(r.reply||"…"),translation:String(r.translation||""),correction:String(r.correction||""),model:String(r.model||"")});
-    gain(3,"conversa");
+    ensureS();if(!isHelp){if(r.correction){S.stats.convRun=0;addError({src:"conversa",wrong:text,right:String(r.corrected||"").trim(),note:String(r.correction)})}else{S.stats.convRun=(S.stats.convRun||0)+1;S.stats.convBest=Math.max(S.stats.convBest||0,S.stats.convRun)}}
+    gain(3,"conversa",chatWho);
   }catch(e){chat.pop();chat.push({role:"assistant",reply:"(…)",translation:e&&e.code==="rate_limited"?"Muitas mensagens seguidas. Espere um pouco e tente de novo.":"Não consegui responder agora. Tente enviar de novo.",correction:""})}
   chatBusy=false;vConversa();if(!isHelp){const ta=$("#say");if(ta)ta.value=""}
 }
@@ -497,7 +541,7 @@ function vOuvir(){
     </section></div>`;
   bindSeg();$("#p1").onclick=()=>speak(p.en,0.9);$("#p2").onclick=()=>speak(p.en,0.6);
   const inp=$("#dict");
-  const finish=(ok,typed)=>{busShown=true;if(ok){busOk++;gain(5,"onibus")}else gain(1,"onibus");
+  const finish=(ok,typed)=>{busShown=true;if(ok){busOk++;gain(5,"onibus")}else{gain(1,"onibus");addError({src:"ditado",wrong:typed,right:p.en,pt:p.pt})}
     const ws=norm(p.en).split(" "),ts=new Set(norm(typed||"").split(" "));
     $("#bfb").innerHTML=`<div class="feedback"><b style="color:${ok?"var(--ok)":"var(--bad)"}">${ok?"Perfeito!":"Era assim:"}</b><p style="font-size:1.05rem;margin-top:4px">${ws.map(w=>`<span style="${ts.has(w)?"":"text-decoration:underline;color:var(--bad)"}">${esc(w)}</span>`).join(" ")}</p><p class="tr">${esc(p.pt)}</p></div><button class="btn full" id="bn" style="margin-top:10px">Próxima</button>`;
     inp.disabled=true;$("#bn").onclick=()=>{busPos++;busShown=false;vOuvir()};document.querySelectorAll("#chk,#show").forEach(b=>b.remove())};
@@ -528,7 +572,7 @@ function vEscrita(){
   bindSeg();
   const inp=$("#wr");
   if(wrRes){inp.value=wrRes.typed||"";$("#wsay").onclick=()=>speak(p.en);$("#wnext").onclick=()=>{wrPos++;wrRes=null;vEscrita()};return}
-  const done=r=>{wrBusy=false;wrRes=r;if(r.ok)wrOk++;gain(r.ok?4:1,"escrita");vEscrita()};
+  const done=r=>{wrBusy=false;wrRes=r;if(r.ok)wrOk++;else addError({src:"escrita",wrong:r.typed,right:p.en,pt:p.pt,note:r.fix});gain(r.ok?4:1,"escrita");vEscrita()};
   const check=async()=>{
     const typed=inp.value.trim();if(!typed||wrBusy)return;
     if(norm(typed)===norm(p.en))return done({ok:true,fix:"",typed});
@@ -541,6 +585,218 @@ function vEscrita(){
   $("#wchk").onclick=check;$("#wshow").onclick=()=>done({ok:false,fix:"",typed:inp.value});
   inp.addEventListener("keydown",e=>{if(e.key==="Enter")check()});
 }
+
+/* ---------- AFINIDADE ---------- */
+const AFF_T=[0,40,120,250,450,700,1000,1400,1900,2500];
+const affLevel=p=>AFF_T.filter(t=>p>=t).length;
+function affInfo(s){const p=Math.round((S.aff||{})[s]||0),l=affLevel(p);const a=AFF_T[l-1],b=AFF_T[l];return {p,l,pct:b==null?100:Math.round((p-a)/(b-a)*100),next:b}}
+const LETTER_FB={
+  ichika:l=>`Nível ${l}, hein? Você está ficando bom nisso… Keep going, I'm watching you~`,
+  nino:l=>`Hmph. Nível ${l}. Não é como se eu estivesse feliz… Tá, talvez um pouquinho. Don't stop now!`,
+  miku:l=>`…nível ${l}. Eu gosto de estudar com você. Thank you for staying with me…`,
+  yotsuba:l=>`Nível ${l}!! Que incrível! You're amazing! Vamos continuar juntos! 🍀`,
+  itsuki:l=>`Chegamos ao nível ${l}. Estou orgulhosa do seu esforço. Let's celebrate with some food!`
+};
+function addAff(s,pts){
+  S.aff=S.aff||{};const before=affLevel(S.aff[s]||0);S.aff[s]=(S.aff[s]||0)+pts;const after=affLevel(S.aff[s]);
+  if(after>before){
+    const L={s,l:after,date:dkey(),text:LETTER_FB[s](after),read:false};S.letters.push(L);
+    toast(`💌 Nova mensagem da ${SIS[s].name}: afinidade nível ${after}`);
+    if(sample){sample(`Você é ${SIS[s].name} Nakano, de The Quintessential Quintuplets. Personalidade: ${SIS[s].vibe}. Você é professora de inglês de um aluno brasileiro e vocês acabaram de chegar ao nível ${after} de 10 de afinidade, porque ele estudou com você. Escreva uma mensagem curta (2 ou 3 frases) para ele, no seu jeito de falar, em português, com uma frase simples em inglês no meio. Clima carinhoso de visual novel para todas as idades. Quanto maior o nível, mais próxima e especial a mensagem. Responda só com a mensagem.`,{modelTier:"quick"}).then(r=>{const t=String(r.text||"").trim();if(t){L.text=t.slice(0,600);saveState();if(tab==="inicio"||tab==="mensagens")render()}}).catch(()=>{})}
+  }
+}
+
+/* ---------- CONQUISTAS ---------- */
+function bestRun(){let best=0,run=0,k=S.start||dkey();const end=dkey();for(let i=0;i<400&&k<=end;i++){const sm=DAYS[k]?daySummary(k):{feitas:0,total:1};if(sm.feitas>=sm.total){run++;best=Math.max(best,run)}else run=0;k=addDays(k,1)}return best}
+const ACH=[
+  {id:"streak3",i:"🔥",t:"3 dias seguidos",c:()=>streak()>=3},
+  {id:"streak7",i:"🔥",t:"1 semana seguida",c:()=>streak()>=7},
+  {id:"streak30",i:"🌋",t:"30 dias seguidos",c:()=>streak()>=30},
+  {id:"dia1",i:"✅",t:"Primeiro dia completo",c:()=>bestRun()>=1},
+  {id:"semana",i:"🏆",t:"Semana perfeita",c:()=>bestRun()>=7},
+  {id:"teste",i:"📝",t:"Fez o teste de nível",c:()=>S.tests.length>=1},
+  {id:"evol",i:"📈",t:"Evoluiu no teste",c:()=>S.tests.length>=2&&S.tests[S.tests.length-1].score>S.tests[S.tests.length-2].score},
+  {id:"aula1",i:"⭐",t:"Primeira aula",c:()=>Object.keys(S.done).length>=1},
+  {id:"aula6",i:"⭐",t:"Metade da trilha",c:()=>Object.keys(S.done).length>=6},
+  {id:"aula12",i:"🎓",t:"Trilha completa",c:()=>Object.keys(S.done).length>=UNITS.length},
+  {id:"cartas100",i:"🃏",t:"100 cartas revisadas",c:()=>(S.stats.cartas||0)>=100},
+  {id:"dom50",i:"🧠",t:"50 palavras dominadas",c:()=>Object.values(S.cards).filter(s=>s.box>=3).length>=50},
+  {id:"conv",i:"💬",t:"Conversa sem erro",c:()=>(S.stats.convBest||0)>=5},
+  {id:"vn1",i:"📖",t:"Primeira cena lida",c:()=>(S.stats.leitura||0)>=1},
+  {id:"vn10",i:"📚",t:"10 cenas lidas",c:()=>(S.stats.leitura||0)>=10},
+  {id:"fala20",i:"🗣️",t:"20 frases repetidas",c:()=>(S.stats.fala||0)>=20},
+  {id:"erros10",i:"✏️",t:"10 erros corrigidos",c:()=>(S.stats.fixed||0)>=10},
+  {id:"aff5",i:"💗",t:"Nível 5 com uma irmã",c:()=>Object.keys(SIS).some(s=>affInfo(s).l>=5)},
+  {id:"aff10",i:"💖",t:"Afinidade máxima",c:()=>Object.keys(SIS).some(s=>affInfo(s).l>=10)}
+];
+function checkAch(){if(!S.stats)return;for(const a of ACH){if(S.ach[a.id])continue;let ok=false;try{ok=a.c()}catch(e){}if(ok){S.ach[a.id]=dkey();setTimeout(()=>toast(`🏅 Conquista: ${a.t}`),900)}}}
+
+/* ---------- CADERNO DE ERROS ---------- */
+const SRC={conversa:"Conversa",escrita:"Escrita",ditado:"Ditado",aula:"Aula"};
+function addError(e){ensureS();if(!e.right)return;if(S.errors.some(x=>!x.fixed&&norm(x.right)===norm(e.right)))return;S.errors.push(Object.assign({date:dkey(),fixed:null},e));if(S.errors.length>200)S.errors=S.errors.filter(x=>!x.fixed).slice(-200);saveState()}
+const openErrors=()=>(S.errors||[]).filter(e=>!e.fixed);
+let rv=null;
+function vRevisao(){
+  if(!rv){rv={q:openErrors().slice(-10).reverse(),i:0,ok:0,res:null}}
+  const back=`<button class="btn line" data-tab="inicio" style="align-self:flex-start">← Início</button>`;
+  if(!rv.q.length){$("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${back}${msg("itsuki","<p>Seu caderno de erros está vazio. Quando a Yotsuba, a Nino ou eu corrigirmos alguma coisa, ela aparece aqui para revisar.</p>")}</div>`;return}
+  if(rv.i>=rv.q.length){$("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${msg("itsuki",`<p>Revisão concluída: <b>${rv.ok} de ${rv.q.length}</b> corrigidos. Os que você acertou saem do caderno. Os outros voltam na próxima revisão.</p>`)}<button class="btn full" data-tab="inicio">Voltar ao início</button></div>`;rv=null;return}
+  const e=rv.q[rv.i];
+  $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${back}
+    <div class="row" style="justify-content:space-between"><span class="eyebrow">Erro ${rv.i+1} de ${rv.q.length} · ${SRC[e.src]||""}</span><span class="chip">${rv.ok} corrigidos</span></div>
+    <section class="panel">
+      ${e.pt?`<h3>${esc(e.pt)}</h3>`:""}${e.note?`<p class="small muted">${esc(e.note)}</p>`:""}
+      ${e.wrong?`<p class="fix" style="border-color:var(--bad)">Você escreveu: <b>${esc(e.wrong)}</b></p>`:""}
+      ${e.src==="ditado"?`<div class="row"><button class="btn ghost" id="rvs">🔊 Ouvir</button></div>`:""}
+      <label for="rvi" class="small muted">Escreva a forma certa em inglês</label>
+      <input type="text" id="rvi" autocomplete="off" spellcheck="false" ${rv.res?"disabled":""}>
+      ${rv.res?`<div class="feedback"><b style="color:${rv.res.ok?"var(--ok)":"var(--bad)"}">${rv.res.ok?"Corrigido!":"Ainda não."}</b> Certo: <b>${esc(e.right)}</b></div><button class="btn full" id="rvn">Próximo</button>`:`<div class="row"><button class="btn" id="rvc">Conferir</button><button class="btn line" id="rvx">Ver resposta</button></div>`}
+    </section></div>`;
+  if(e.src==="ditado")$("#rvs").onclick=()=>speak(e.right);
+  const inp=$("#rvi");
+  if(rv.res){inp.value=rv.res.typed;$("#rvn").onclick=()=>{rv.i++;rv.res=null;vRevisao()};return}
+  const fin=ok=>{rv.res={ok,typed:inp.value};if(ok){rv.ok++;e.fixed=dkey();S.stats.fixed=(S.stats.fixed||0)+1}gain(ok?3:1,"revisao");vRevisao()};
+  $("#rvc").onclick=()=>fin(norm(inp.value)===norm(e.right));$("#rvx").onclick=()=>fin(false);
+  inp.addEventListener("keydown",ev=>{if(ev.key==="Enter")fin(norm(inp.value)===norm(e.right))});
+}
+
+/* ---------- CARTINHAS (mensagens de afinidade) ---------- */
+function vMensagens(){
+  const L=(S.letters||[]).slice().reverse();L.forEach(x=>x.read=true);saveState();
+  $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px"><button class="btn line" data-tab="inicio" style="align-self:flex-start">← Início</button><h2>Mensagens das irmãs</h2>
+  ${L.length?L.map(x=>msg(x.s,`<p class="small muted">Afinidade nível ${x.l} · ${x.date.split("-").reverse().join("/")}</p><p>${esc(x.text)}</p>`)).join(""):msg("miku","<p>…ainda não tem mensagens. Quando a afinidade com uma de nós subir de nível, a gente te escreve.</p>")}</div>`;
+}
+
+/* ---------- LEITURA ESTILO VISUAL NOVEL (Nino) ---------- */
+const VN_THEMES=["um dia de estudo na biblioteca","o festival de verão","uma prova difícil amanhã","cozinhando o jantar juntos","um passeio no parque","a viagem da escola","um dia de chuva sem guarda-chuva","comprando um presente de aniversário","uma noite de filmes em casa","o treino de esportes","uma visita à livraria","o primeiro dia de aula","um café da manhã atrasado","uma tarde de jogos","arrumando a casa"];
+const VN_FALLBACK={title:"The Library",setting_pt:"Biblioteca da escola, depois da aula.",lines:[
+  {speaker:"Narrator",en:"It is after school. The library is very quiet.",pt:"É depois da aula. A biblioteca está muito silenciosa."},
+  {speaker:"Nino",en:"You're late! We started ten minutes ago.",pt:"Você está atrasado! A gente começou dez minutos atrás."},
+  {speaker:"You",en:"Sorry. The bus was slow today.",pt:"Desculpa. O ônibus estava lento hoje."},
+  {speaker:"Miku",en:"…It's okay. I saved a seat for you.",pt:"…Tudo bem. Eu guardei um lugar pra você."},
+  {speaker:"Itsuki",en:"We have a math test tomorrow. Can you help us?",pt:"Temos prova de matemática amanhã. Você pode ajudar a gente?"},
+  {speaker:"Yotsuba",en:"But first, snacks! I brought some bread!",pt:"Mas primeiro, lanchinho! Eu trouxe pão!"},
+  {speaker:"Nino",en:"No food in the library, Yotsuba!",pt:"Nada de comida na biblioteca, Yotsuba!"}],
+ choice:{question_pt:"O que você faz?",options:[
+  {en:"Let's study first. We can eat later.",pt:"Vamos estudar primeiro. Podemos comer depois.",mood:"good",sister:"itsuki",result:[{speaker:"Itsuki",en:"You're right. Study first, then food.",pt:"Você tem razão. Estudo primeiro, depois comida."},{speaker:"Nino",en:"Finally, someone with good sense.",pt:"Finalmente alguém com bom senso."}]},
+  {en:"Let's eat the bread now!",pt:"Vamos comer o pão agora!",mood:"bad",sister:"yotsuba",result:[{speaker:"Yotsuba",en:"Yay! You're the best!",pt:"Eba! Você é o melhor!"},{speaker:"Nino",en:"Unbelievable. Don't cry tomorrow after the test.",pt:"Inacreditável. Não chore amanhã depois da prova."}]},
+  {en:"Miku, can you help me with history after?",pt:"Miku, você pode me ajudar com história depois?",mood:"neutral",sister:"miku",result:[{speaker:"Miku",en:"…Really? Okay. I'd like that.",pt:"…Sério? Tá bom. Eu ia gostar."},{speaker:"Itsuki",en:"And math? Don't forget math!",pt:"E matemática? Não esqueça de matemática!"}]}]},
+ glossary:{after:"depois",school:"escola",library:"biblioteca",quiet:"silenciosa",late:"atrasado",started:"começamos",ago:"atrás",sorry:"desculpa",slow:"lento",saved:"guardei",seat:"lugar / assento",test:"prova",tomorrow:"amanhã",help:"ajudar",first:"primeiro",snacks:"lanchinhos",brought:"trouxe",bread:"pão",food:"comida",later:"depois",right:"certo",then:"então / depois",finally:"finalmente",someone:"alguém",sense:"senso",best:"o melhor",unbelievable:"inacreditável",cry:"chorar",really:"sério",forget:"esquecer",like:"gostar"}};
+let vn=null,vnBusy=false,vnShowPt=false,vnWord=null;
+function vnLines(){return vn.phase==="result"?vn.choice.options[vn.pick].result:vn.lines}
+function allCards(){return DECK.concat(S.custom||[])}
+function wordKey(w){return w.toLowerCase().replace(/[’']s$/,"").replace(/[^a-z'’-]/g,"").replace(/’/g,"'")}
+function glossFind(w){const g=vn&&vn.glossary||{};const cands=[w,w.replace(/s$/,""),w.replace(/es$/,""),w.replace(/ed$/,""),w.replace(/d$/,""),w.replace(/ing$/,""),w.replace(/ies$/,"y")];for(const c of cands){if(g[c])return g[c];const d=allCards().find(x=>x.en===c);if(d)return d.pt}return null}
+function addCustomCard(w,pt,ex){ensureS();if(allCards().some(c=>c.en===w))return false;S.custom.push({id:"c"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),en:w,pt,ex,cat:"leitura"});saveState();return true}
+async function startVN(){
+  vnBusy=true;vn=null;vnWord=null;render();
+  const lvl=S.tests.length?S.tests[S.tests.length-1].level:"A1";
+  const theme=VN_THEMES[(S.stats.leitura||0)%VN_THEMES.length];
+  if(!sample){vn=JSON.parse(JSON.stringify(VN_FALLBACK));Object.assign(vn,{pos:0,phase:"lines"});vnBusy=false;return render()}
+  try{
+    const r=await sample.json(`Crie uma cena curta e ORIGINAL de visual novel em inglês para um aluno brasileiro de nível ${lvl}. Personagens: as quíntuplas Nakano (Ichika, Nino, Miku, Yotsuba, Itsuki), com as personalidades do anime, e o protagonista "You" (o aluno). Tema: ${theme}. Não copie cenas do anime nem do jogo, invente uma nova. Inglês simples: frases curtas, presente e passado simples, contrações comuns (I'm, don't, can't). Para todas as idades.
+Responda SOMENTE com JSON: {"title":string em inglês,"setting_pt":string (1 frase em português dizendo onde e quando),"lines":[{"speaker":"Ichika"|"Nino"|"Miku"|"Yotsuba"|"Itsuki"|"You"|"Narrator","en":string,"pt":string}] (7 a 9 falas, com 2 ou 3 irmãs),"choice":{"question_pt":string,"options":[{"en":string (o que o protagonista diz),"pt":string,"mood":"good"|"neutral"|"bad","sister":"ichika"|"nino"|"miku"|"yotsuba"|"itsuki" (a irmã mais afetada),"result":[{"speaker","en","pt"}] (2 ou 3 falas)}] (exatamente 3 opções, com finais diferentes)},"glossary":{"palavra em inglês em minúsculas":"tradução curta"} (todas as palavras não óbvias da cena, inclusive das opções e resultados, 20 a 40 palavras, verbos na forma que aparecem)}`,{modelTier:"default"});
+    if(!r||!Array.isArray(r.lines)||!r.choice||!Array.isArray(r.choice.options)||r.choice.options.length<2)throw new Error("formato");
+    vn=Object.assign(r,{pos:0,phase:"lines"});
+  }catch(e){vn=JSON.parse(JSON.stringify(VN_FALLBACK));Object.assign(vn,{pos:0,phase:"lines"});toast(e&&e.code==="rate_limited"?"Muitas cenas seguidas. Usei uma cena pronta.":"Não consegui criar uma cena nova. Usei uma cena pronta.")}
+  vnBusy=false;render();
+}
+function sisKey(name){const k=String(name||"").toLowerCase();return SIS[k]?k:null}
+function vLeitura(){
+  if(vnBusy){$("#view").innerHTML=`<div class="panel">${msg("nino","<p><span class=\"spin\"></span> Escrevendo uma cena nova… espera aí.</p>")}</div>`;return}
+  if(!vn){
+    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${msg("nino",`<p>Aqui é leitura, do jeito de uma visual novel. Toque em qualquer palavra que você não sabe: eu mostro a tradução e mando ela para as cartas da Miku. No fim você escolhe o que dizer, e cada escolha leva a um final diferente.</p>`)}
+      <div class="stats"><div class="stat"><span class="eyebrow">Cenas</span><b>${S.stats.leitura||0}</b></div><div class="stat"><span class="eyebrow">Palavras</span><b>${(S.custom||[]).length}</b><span class="small muted">salvas</span></div><div class="stat"><span class="eyebrow">Hoje</span><b>${((DAYS[dkey()]||{}).acts||{}).leitura||0}</b><span class="small muted">cenas</span></div></div>
+      <button class="btn full" id="vnGo">Começar uma cena nova</button></div>`;
+    $("#vnGo").onclick=startVN;return;
+  }
+  if(vn.phase==="end"){
+    const o=vn.choice.options[vn.pick],sk=sisKey(o.sister)||"nino",mood={good:["Final bom","yotsuba"],neutral:["Final neutro","miku"],bad:["Final ruim","nino"]}[o.mood]||["Final","miku"];
+    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+      <section class="panel"><span class="eyebrow">${esc(vn.title)}</span><h2>${mood[0]}</h2><p class="muted">Afinidade com a ${SIS[sk].name} subiu.</p></section>
+      ${msg("nino",`<p>Cena lida! ${vn.saved?`Você salvou <b>${vn.saved}</b> ${vn.saved===1?"palavra nova":"palavras novas"} para as cartas da Miku.`:"Nenhuma palavra nova desta vez… ou você não tocou nas que não sabia? Hmph."}</p><p class="small muted">Dica: volte e escolha outra opção para ler os outros finais.</p>`)}
+      <div class="row"><button class="btn ghost" id="vnOther">Ver outro final</button><button class="btn" id="vnNew" style="flex:1">Nova cena</button></div></div>`;
+    $("#vnOther").onclick=()=>{vn.phase="choice";vnWord=null;render()};$("#vnNew").onclick=startVN;return;
+  }
+  if(vn.phase==="choice"){
+    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">
+      <div class="vn-stage"><span class="eyebrow">${esc(vn.title)}</span><p class="small muted">${esc(vn.setting_pt||"")}</p></div>
+      <section class="panel"><h3>${esc(vn.choice.question_pt||"O que você diz?")}</h3>
+      <div class="opts">${vn.choice.options.map((o,i)=>`<button class="opt" data-pick="${i}"><b>${esc(o.en)}</b>${vnShowPt?`<div class="tr">${esc(o.pt)}</div>`:""}</button>`).join("")}</div>
+      <button class="btn line" id="vnPt">${vnShowPt?"Esconder tradução":"Ver tradução"}</button></section></div>`;
+    document.querySelectorAll("[data-pick]").forEach(b=>b.onclick=()=>{vn.pick=+b.dataset.pick;vn.phase="result";vn.pos=0;vnWord=null;render()});
+    $("#vnPt").onclick=()=>{vnShowPt=!vnShowPt;render()};return;
+  }
+  const L=vnLines(),ln=L[vn.pos]||{speaker:"Narrator",en:"…",pt:""},sk=sisKey(ln.speaker);
+  const words=String(ln.en).split(/(\s+)/).map(t=>/\s/.test(t)?t:`<button class="w" data-w="${esc(t)}">${esc(t)}</button>`).join("");
+  const total=vn.lines.length+(vn.phase==="result"?L.length:0),cur=(vn.phase==="result"?vn.lines.length:0)+vn.pos+1;
+  $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">
+    <div class="vn-stage" style="${sk?`--sc:${SIS[sk].c}`:""}">
+      <div class="row" style="justify-content:space-between"><span class="eyebrow">${esc(vn.title)}</span><span class="eyebrow">${cur}/${total}${vn.phase==="result"?"":" + escolha"}</span></div>
+      ${vn.pos===0&&vn.phase==="lines"?`<p class="small muted">${esc(vn.setting_pt||"")}</p>`:""}
+      <div class="vn-sprite">${sk?ava(sk,88):`<div class="ava" style="width:88px;height:88px;background:var(--surface2);color:var(--muted)">${ln.speaker==="You"?"Você":"…"}</div>`}</div>
+      <div class="vn-box">
+        <div class="vn-name" style="background:${sk?SIS[sk].c:"var(--muted)"}">${ln.speaker==="You"?"Você":ln.speaker==="Narrator"?"Narração":esc(ln.speaker)}</div>
+        <p class="vn-text">${words}</p>
+        ${vnShowPt?`<p class="tr">${esc(ln.pt)}</p>`:""}
+      </div>
+    </div>
+    <div id="vnw">${vnWord?`<div class="feedback"><b>${esc(vnWord.w)}</b> = ${vnWord.pt?esc(vnWord.pt):'<span class="spin"></span>'} ${vnWord.added?'<span class="small" style="color:var(--ok)">· salva nas cartas da Miku</span>':vnWord.pt&&!vnWord.added?'<span class="small muted">· já está nas suas cartas</span>':""}</div>`:`<p class="small muted">Toque numa palavra para ver a tradução.</p>`}</div>
+    <div class="row"><button class="btn ghost" id="vnSay">🔊</button><button class="btn line" id="vnPt">${vnShowPt?"Esconder tradução":"Ver tradução"}</button><button class="btn" id="vnNext" style="flex:1">Próximo ▶</button></div>
+  </div>`;
+  document.querySelectorAll("[data-w]").forEach(b=>b.onclick=async()=>{
+    const w=wordKey(b.dataset.w);if(!w)return;let pt=glossFind(w);vnWord={w,pt,added:false};render();
+    if(!pt&&sample){try{const r=await sample(`Traduza a palavra inglesa "${w}" como ela é usada nesta frase: "${ln.en}". Responda só com a tradução curta em português.`,{modelTier:"quick"});pt=String(r.text||"").trim().slice(0,60)}catch(e){}}
+    if(!pt)pt="(sem tradução)";
+    const added=pt!=="(sem tradução)"&&addCustomCard(w,pt,ln.en);if(added)vn.saved=(vn.saved||0)+1;
+    if(vnWord&&vnWord.w===w){vnWord={w,pt,added};render()}
+  });
+  $("#vnSay").onclick=()=>speak(ln.en);
+  $("#vnPt").onclick=()=>{vnShowPt=!vnShowPt;render()};
+  $("#vnNext").onclick=()=>{vnWord=null;vn.pos++;
+    if(vn.pos>=L.length){
+      if(vn.phase==="lines"){vn.phase="choice"}
+      else{const o=vn.choice.options[vn.pick],sk2=sisKey(o.sister);if(!vn.scored){vn.scored=true;gain(10,"leitura");if(sk2)addAff(sk2,o.mood==="good"?15:o.mood==="neutral"?8:3);saveState()}vn.phase="end"}
+    }render()};
+}
+
+/* ---------- FALA (shadowing) ---------- */
+let convMode="chat",sh=null;
+function convSeg(){return `<div class="seg" role="group" aria-label="Modo"><button aria-pressed="${convMode==="chat"}" data-cm="chat">💬 Conversa</button><button aria-pressed="${convMode==="fala"}" data-cm="fala">🔁 Repetir em voz alta</button></div>`}
+function bindConvSeg(){document.querySelectorAll("[data-cm]").forEach(b=>b.onclick=()=>{convMode=b.dataset.cm;render()})}
+function vFala(){
+  if(!sh)sh={q:shuffle(PHRASES).slice(0,8),i:0,ok:0,res:null};
+  if(sh.i>=sh.q.length){$("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">${convSeg()}${msg("yotsuba",`<p>Fim do treino! Você mandou bem em <b>${sh.ok} de ${sh.q.length}</b> frases. Sua voz está ficando cada vez mais clara! 🍀</p>`)}<button class="btn full" id="shA">Mais 8 frases</button></div>`;bindConvSeg();$("#shA").onclick=()=>{sh=null;vFala()};return}
+  const p=sh.q[sh.i];
+  $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">${convSeg()}
+    ${sh.i===0&&!sh.res?msg("yotsuba","<p>Ouça a frase, depois toque na caixa, aperte o 🎤 do teclado e repita em voz alta. Se o teclado escrever certinho, sua pronúncia está boa!</p>"):""}
+    <div class="row" style="justify-content:space-between"><span class="eyebrow">Frase ${sh.i+1} de ${sh.q.length}</span><span class="chip">${sh.ok} boas</span></div>
+    <section class="panel"><h3>${esc(p.en)}</h3><p class="tr">${esc(p.pt)}</p>
+      <div class="row"><button class="btn" id="sh1">🔊 Ouvir</button><button class="btn ghost" id="sh2">🐢 Devagar</button></div>
+      <label for="shi" class="small muted">Toque aqui e use o 🎤 do teclado para falar</label>
+      <textarea id="shi" rows="2" ${sh.res?"disabled":""}></textarea>
+      ${sh.res?`<div class="feedback"><b style="color:${sh.res.pct>=80?"var(--ok)":"var(--bad)"}">${sh.res.pct}% igual</b> ${sh.res.pct>=80?"Ótima pronúncia!":"As palavras sublinhadas o teclado não entendeu. Tente de novo mais devagar."}<p style="margin-top:4px">${sh.res.html}</p></div><div class="row"><button class="btn ghost" id="shR">Tentar de novo</button><button class="btn" id="shN" style="flex:1">Próxima</button></div>`:`<button class="btn" id="shC">Conferir</button>`}
+    </section></div>`;
+  bindConvSeg();$("#sh1").onclick=()=>speak(p.en);$("#sh2").onclick=()=>speak(p.en,0.6);
+  const ta=$("#shi");
+  if(sh.res){ta.value=sh.res.said;$("#shN").onclick=()=>{sh.i++;sh.res=null;vFala()};$("#shR").onclick=()=>{sh.res=null;vFala()};return}
+  $("#shC").onclick=()=>{const said=ta.value.trim();if(!said)return;const tw=norm(p.en).split(" "),sw=new Set(norm(said).split(" "));const hit=tw.filter(w=>sw.has(w)).length,pct=Math.round(hit/tw.length*100);
+    const html=tw.map(w=>`<span style="${sw.has(w)?"":"text-decoration:underline;color:var(--bad)"}">${esc(w)}</span>`).join(" ");
+    if(pct>=80){sh.ok++;gain(3,"fala")}else gain(1,"fala");sh.res={pct,html,said};vFala()};
+}
+
+/* ---------- VOZ ---------- */
+let VOICE_PREF={name:"",rate:1};
+try{VOICE_PREF=Object.assign(VOICE_PREF,JSON.parse(localStorage.getItem("quint-voz")||"{}"))}catch(e){}
+function enVoices(){try{return speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang))}catch(e){return []}}
+function voiceHtml(){const vs=enVoices();return `<section class="panel"><h2>Voz do inglês</h2>
+  <p class="small muted">São as vozes instaladas no seu celular. No iPhone dá para baixar vozes melhores em Ajustes › Acessibilidade › Conteúdo Falado › Vozes › Inglês (procure as "Aprimorada" ou "Premium").</p>
+  ${vs.length?`<label for="vsel" class="small muted">Voz</label><select id="vsel" style="width:100%;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:inherit"><option value="">Automática</option>${vs.map(v=>`<option value="${esc(v.name)}" ${v.name===VOICE_PREF.name?"selected":""}>${esc(v.name)} (${esc(v.lang)})</option>`).join("")}</select>`:`<p class="small muted">Nenhuma voz em inglês encontrada neste aparelho.</p>`}
+  <label for="vrate" class="small muted">Velocidade: <b id="vrl">${Math.round(VOICE_PREF.rate*100)}%</b></label><input type="range" id="vrate" min="0.6" max="1.3" step="0.05" value="${VOICE_PREF.rate}">
+  <button class="btn ghost" id="vtest">🔊 Testar: "Hi! Let's study English together."</button></section>`}
+function bindVoice(){const s=$("#vsel"),r=$("#vrate");const save=()=>{try{localStorage.setItem("quint-voz",JSON.stringify(VOICE_PREF))}catch(e){}};
+  if(s)s.onchange=()=>{VOICE_PREF.name=s.value;save()};if(r)r.oninput=()=>{VOICE_PREF.rate=+r.value;$("#vrl").textContent=Math.round(VOICE_PREF.rate*100)+"%";save()};
+  $("#vtest").onclick=()=>speak("Hi! Let's study English together.")}
 
 /* ---------- TESTE ---------- */
 let testState=null;
@@ -574,8 +830,8 @@ function start(){
   const h=(location.hash||"").slice(1);if(TABS.some(t=>t.id===h))tab=h;
   renderTabs();render();
 }
-lsLoad();start();
-addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(h!==tab&&(TABS.some(t=>t.id===h)||h==="teste"))go(h)});
+lsLoad();ensureS();start();
+addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(h!==tab&&(TABS.some(t=>t.id===h)||["teste","revisao","mensagens"].includes(h)))go(h)});
 
 (async()=>{
   if(!window.claude||!claude.use)return;
@@ -588,12 +844,12 @@ addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(h!==tab&&(T
     const ds=await d.collection("dias").get();
     clearTimeout(timer);
     db=d;mode="db";
-    if(st.exists){S=Object.assign({},S,JSON.parse(JSON.stringify(st.data())));renderTabs()}
+    if(st.exists){S=Object.assign({},S,JSON.parse(JSON.stringify(st.data())));ensureS();renderTabs()}
     else{saveState()} // primeira vez: sobe o que estiver no aparelho
     const remote={};ds.docs.forEach(x=>{const v=x.data();if(v)remote[x.id]=JSON.parse(JSON.stringify(v))});
     for(const k in DAYS){if(!remote[k]||(remote[k].xp||0)<(DAYS[k].xp||0)){remote[k]=DAYS[k];saveDay(k)}}
-    DAYS=remote;lsSave();
-    if(!lesson&&!(tab==="teste"&&testState&&testState.i>=0)&&!(tab==="conversa"&&chat.length>1))render();
+    DAYS=remote;ensureS();lsSave();
+    if(!lesson&&!vn&&!rv&&!(tab==="teste"&&testState&&testState.i>=0)&&!(tab==="conversa"&&(chat.length>1||sh)))render();
   }catch(e){clearTimeout(timer);console.warn("db",e)}
 })();
 </script>
