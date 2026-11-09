@@ -436,19 +436,21 @@ function dueCards(){
   const k=dkey(),seen=[],fresh=[];
   for(const c of allCards()){const st=S.cards[c.id];if(st){if(st.due<=k)seen.push(c)}else if(c.cat==="leitura")fresh.unshift(c);else fresh.push(c)}
   const newToday=Object.values(S.cards).filter(s=>s.first===k).length;
-  return seen.concat(fresh.slice(0,Math.max(0,10-newToday)));
+  return seen.concat(fresh.slice(0,Math.max(0,15-newToday)));
 }
 let cq=null,flip=false;
 function vCartas(){
   if(!cq) cq=shuffle(dueCards());
   const learned=Object.values(S.cards).filter(s=>s.box>=3).length;
+  const learning=Object.values(S.cards).filter(s=>s.box>=1&&s.box<3).length;
+  const okToday=Object.values(S.cards).filter(s=>(s.last||s.first)===dkey()&&s.box>=1).length;
   if(!cq.length){
-    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${msg("miku",`<p>Acabaram as cartas de hoje… Você já domina <b>${learned}</b> de ${allCards().length} palavras. Volte amanhã, as que você errou vão aparecer de novo.</p>`)}<button class="btn ghost" id="more">Treinar mais 5 palavras novas</button></div>`;
+    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${msg("miku",`<p>Acabaram as cartas de hoje… Você acertou <b>${okToday}</b> palavras hoje.</p><p>🌱 <b>${learning}</b> aprendendo · 🌸 <b>${learned}</b> dominadas</p><p class="small muted">Uma palavra fica dominada quando você acerta ela em 3 revisões, em dias diferentes. Amanhã elas voltam para você confirmar…</p>`)}<button class="btn ghost" id="more">Treinar mais 5 palavras novas</button></div>`;
     $("#more").onclick=()=>{cq=shuffle(allCards().filter(c=>!S.cards[c.id])).slice(0,5);vCartas()};return;
   }
   const c=cq[0];
   $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
-    <div class="row" style="justify-content:space-between"><span class="eyebrow">${cq.length} restantes · ${esc(c.cat)}</span><span class="chip">${learned}/${allCards().length} dominadas</span></div>
+    <div class="row" style="justify-content:space-between"><span class="eyebrow">${cq.length} restantes · ${esc(c.cat)}</span><span class="chip">🌱 ${learning} · 🌸 ${learned}</span></div>
     <button class="card" id="card" aria-label="Virar carta">
       <span class="word">${esc(c.en)}</span>
       ${flip?`<span style="font-size:1.15rem;font-weight:700">${esc(c.pt)}</span><span class="ex">${esc(c.ex)}</span>`:`<span class="muted small">Toque para ver o significado</span>`}
@@ -462,7 +464,7 @@ function vCartas(){
     document.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{
       const g=+b.dataset.g,k=dkey();const st=S.cards[c.id]||{box:0,first:k};
       st.box=g===0?0:g===1?Math.max(1,st.box):Math.min(BOX_DAYS.length-1,st.box+1);
-      st.due=addDays(k,g===0?0:BOX_DAYS[st.box]);S.cards[c.id]=st;
+      st.due=addDays(k,g===0?0:BOX_DAYS[st.box]);st.last=k;S.cards[c.id]=st;
       cq.shift();if(g===0)cq.push(c);flip=false;gain(2,"cartas");vCartas();
     });}
 }
