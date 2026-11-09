@@ -190,7 +190,7 @@ const addDays=(k,n)=>{const [y,m,d]=k.split("-").map(Number);return dkey(new Dat
 const diffDays=(a,b)=>{const p=k=>{const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d)};return Math.round((p(b)-p(a))/864e5)};
 let S={xp:0,start:dkey(),cards:{},done:{},tests:[],lastTeacher:"nino"};
 let DAYS={}; // dkey -> {xp,min,acts}
-let db=null, sample=null, tab="inicio", mode="local";
+let db=null, sample=null, assets=null, tab="inicio", mode="local";
 
 const LS="quint-ingles-v1";
 function lsSave(){try{localStorage.setItem(LS,JSON.stringify({S,DAYS}))}catch(e){}}
@@ -218,7 +218,9 @@ function nextTest(){const last=S.tests.length?S.tests[S.tests.length-1].date:nul
 /* ======================= UTIL ======================= */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const ava=(k,size)=>`<div class="ava" style="background:${SIS[k].c}${size?";width:"+size+"px;height:"+size+"px":""}" aria-hidden="true">${SIS[k].name[0]}</div>`;
+const ph=k=>{const id=(S.photos||{})[k];return id&&/^[A-Za-z0-9_-]+$/.test(id)?id:null};
+const photoCss=k=>ph(k)?`;background-image:url('/_blob/${ph(k)}');background-size:cover;background-position:center`:"";
+const ava=(k,size)=>`<div class="ava" style="background:${SIS[k].c}${photoCss(k)}${size?";width:"+size+"px;height:"+size+"px":""}" aria-hidden="true">${ph(k)?"":SIS[k].name[0]}</div>`;
 function msg(k,html){return `<div class="msg">${ava(k)}<div class="bubble"><div class="who" style="color:${SIS[k].c}">${SIS[k].name}</div>${html}</div></div>`}
 function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2200)}
 let voice=null;
@@ -230,7 +232,7 @@ const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random(
 
 /* ======================= TELAS ======================= */
 function renderTabs(){
-  $("#tabs").innerHTML=TABS.map(t=>`<button role="tab" id="tab-${t.id}" aria-selected="${t.id===tab}" data-tab="${t.id}"><span class="d" style="background:${SIS[t.s].c}">${SIS[t.s].name[0]}</span>${t.label}</button>`).join("");
+  $("#tabs").innerHTML=TABS.map(t=>`<button role="tab" id="tab-${t.id}" aria-selected="${t.id===tab}" data-tab="${t.id}"><span class="d" style="background:${SIS[t.s].c}${photoCss(t.s)}">${ph(t.s)?"":SIS[t.s].name[0]}</span>${t.label}</button>`).join("");
 }
 document.addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b){go(b.dataset.tab)}});
 function go(t){tab=t;try{speechSynthesis.cancel()}catch(e){}renderTabs();render();scrollTo(0,0);if(location.hash!=="#"+t)history.replaceState(null,"","#"+t)}
@@ -277,9 +279,22 @@ function vHome(){
       <h3>A meta</h3>
       <p class="muted small">Jogar <i>The Quintessential Quintuplets: Five Memories Spent With You</i> (PS4) em inglês e entender os finais de cada irmã. O jogo é quase todo leitura, então leitura e vocabulário de diálogo vêm primeiro. Escuta e fala vêm junto.</p>
     </section>
+    <section class="panel">
+      <h2>Fotos das professoras</h2>
+      <p class="small muted">Escolha uma imagem do seu celular para cada irmã. Ela aparece no lugar da letra, no app todo.</p>
+      ${assets?Object.keys(SIS).map(k=>`<div class="row">${ava(k)}<b style="flex:1;min-width:0">${SIS[k].name}</b><label class="btn ghost" style="padding:7px 12px" for="ph-${k}">${ph(k)?"Trocar":"Escolher foto"}</label><input type="file" accept="image/*" id="ph-${k}" data-ph="${k}" hidden>${ph(k)?`<button class="btn line" style="padding:7px 12px" data-rm="${k}">Tirar</button>`:""}</div>`).join(""):`<p class="small muted">Para escolher as fotos, abra a página logado na sua conta do Claude.</p>`}
+    </section>
     <p class="small muted" style="text-align:center">${mode==="db"?"Progresso salvo na sua conta.":"Progresso salvo só neste aparelho."}</p>
   </div>`;
   $("#goTest").onclick=()=>{testState=null;go("teste")};
+  document.querySelectorAll("[data-ph]").forEach(inp=>inp.onchange=async()=>{
+    const f=inp.files&&inp.files[0],k=inp.dataset.ph;if(!f||!assets)return;
+    if(!/^image\//.test(f.type)){toast("Escolha um arquivo de imagem");return}
+    toast("Enviando a foto da "+SIS[k].name+"…");
+    try{const r=await assets.upload(f);const old=ph(k);S.photos=Object.assign({},S.photos,{[k]:r.id});saveState();if(old)assets.delete(old).catch(()=>{});toast("Foto da "+SIS[k].name+" salva");renderTabs();render()}
+    catch(e){toast(e&&/large|size/i.test(e.code||"")?"Imagem grande demais (máx. 20 MB)":"Não consegui enviar a foto. Tente outra imagem.")}
+  });
+  document.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{const k=b.dataset.rm,old=ph(k);const p=Object.assign({},S.photos);delete p[k];S.photos=p;saveState();if(old&&assets)assets.delete(old).catch(()=>{});renderTabs();render()});
 }
 
 /* ---------- AULA ---------- */
@@ -497,6 +512,7 @@ addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(h!==tab&&(T
 (async()=>{
   if(!window.claude||!claude.use)return;
   claude.use("sample").then(s=>{sample=s;if(tab==="conversa")render()});
+  claude.use("assets").then(a=>{assets=a;if(tab==="inicio")render()});
   const d=await claude.use("db");if(!d)return;
   const timer=setTimeout(()=>{},10000);
   try{
@@ -504,7 +520,7 @@ addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(h!==tab&&(T
     const ds=await d.collection("dias").get();
     clearTimeout(timer);
     db=d;mode="db";
-    if(st.exists){S=Object.assign({},S,JSON.parse(JSON.stringify(st.data())))}
+    if(st.exists){S=Object.assign({},S,JSON.parse(JSON.stringify(st.data())));renderTabs()}
     else{saveState()} // primeira vez: sobe o que estiver no aparelho
     const remote={};ds.docs.forEach(x=>{const v=x.data();if(v)remote[x.id]=JSON.parse(JSON.stringify(v))});
     for(const k in DAYS){if(!remote[k]||(remote[k].xp||0)<(DAYS[k].xp||0)){remote[k]=DAYS[k];saveDay(k)}}
