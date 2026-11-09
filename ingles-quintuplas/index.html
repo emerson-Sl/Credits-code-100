@@ -1,0 +1,515 @@
+<title>Aulas das Quíntuplas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: app de mensagens no celular. Cada irmã é um "contato" com uma cor; abas fixas embaixo. */
+:root{
+  --bg:#f6f3f8; --surface:#ffffff; --surface2:#efeaf3; --fg:#231c2b; --muted:#6c6278; --line:#e0d8e7;
+  --ichika:#d68a1a; --nino:#d23f7a; --miku:#2f72c9; --yotsuba:#2d9a52; --itsuki:#c8502e;
+  --accent:#7a3fb0; --ok:#2d9a52; --bad:#c8392e;
+  --display:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Arial Rounded MT Bold",system-ui,sans-serif;
+  --body:"Zen Kaku Gothic New","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#17131c; --surface:#221c29; --surface2:#2c2534; --fg:#f1ebf6; --muted:#a99db6; --line:#3a3144;
+  --ichika:#f0a93f; --nino:#f0679d; --miku:#6aa3ef; --yotsuba:#5cc47d; --itsuki:#ee7a55;
+  --accent:#b07ce0; --ok:#5cc47d; --bad:#f07466; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#17131c; --surface:#221c29; --surface2:#2c2534; --fg:#f1ebf6; --muted:#a99db6; --line:#3a3144;
+  --ichika:#f0a93f; --nino:#f0679d; --miku:#6aa3ef; --yotsuba:#5cc47d; --itsuki:#ee7a55;
+  --accent:#b07ce0; --ok:#5cc47d; --bad:#f07466; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 96px;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;line-height:1.2}
+h1{font-size:1.5rem;font-weight:900}
+h2{font-size:1.15rem;font-weight:700}
+h3{font-size:1rem;font-weight:700}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+.eyebrow{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.dots{display:flex;gap:4px}
+.dots i{width:10px;height:10px;border-radius:50%;display:block}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--surface2);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:var(--display);font-size:1.35rem;font-variant-numeric:tabular-nums}
+.bar{height:8px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.bar span{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .4s}
+/* mensagens */
+.msg{display:flex;gap:10px;align-items:flex-start}
+.ava{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff;font-family:var(--display);font-weight:900;font-size:1rem}
+.bubble{background:var(--surface);border:1px solid var(--line);border-radius:4px 16px 16px 16px;padding:10px 13px;min-width:0;display:flex;flex-direction:column;gap:4px}
+.bubble .who{font-weight:700;font-size:.82rem}
+.me{flex-direction:row-reverse}
+.me .bubble{border-radius:16px 4px 16px 16px;background:var(--surface2)}
+.btn{border:0;border-radius:12px;padding:11px 16px;font-weight:700;background:var(--accent);color:#fff}
+.btn.ghost{background:var(--surface2);color:var(--fg)}
+.btn.line{background:transparent;border:1px solid var(--line);color:var(--fg)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.full{width:100%}
+.slot{display:flex;gap:12px;align-items:center;padding:12px;border-radius:14px;background:var(--surface2);border:0;text-align:left;width:100%}
+.slot .time{font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums;min-width:52px}
+.slot .stripe{width:4px;align-self:stretch;border-radius:4px}
+.slot div{min-width:0}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:.78rem;font-weight:700;background:var(--surface2)}
+/* abas */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);z-index:5}
+nav.tabs .in{display:grid;grid-template-columns:repeat(5,1fr);width:100%;max-width:560px}
+nav.tabs button{background:none;border:0;padding:9px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.72rem;color:var(--muted);font-weight:700}
+nav.tabs button .d{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-size:.75rem;color:#fff;opacity:.55}
+nav.tabs button[aria-selected="true"]{color:var(--fg)}
+nav.tabs button[aria-selected="true"] .d{opacity:1}
+/* cartas */
+.card{min-height:210px;border-radius:20px;border:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:22px;text-align:center;width:100%}
+.card .word{font-family:var(--display);font-size:2rem;font-weight:900;overflow-wrap:anywhere}
+.card .ex{font-style:italic}
+.grade{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+/* exercícios */
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{text-align:left;padding:11px 13px;border-radius:12px;border:1px solid var(--line);background:var(--surface);width:100%}
+.opt.right{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,var(--surface))}
+.opt.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,var(--surface))}
+.feedback{padding:10px 12px;border-radius:12px;background:var(--surface2)}
+input[type=text],textarea{width:100%;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:12px;padding:11px 13px;font:inherit}
+textarea{resize:vertical;min-height:48px}
+.chat{display:flex;flex-direction:column;gap:12px}
+.pick{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.pick button{flex:none;border:2px solid transparent;border-radius:99px;padding:6px 12px 6px 6px;display:flex;align-items:center;gap:6px;background:var(--surface2);font-weight:700;font-size:.85rem}
+.pick button .ava{width:26px;height:26px;font-size:.8rem}
+.pick button[aria-pressed="true"]{border-color:var(--accent)}
+.units{display:flex;flex-direction:column;gap:8px}
+.unit{display:flex;gap:12px;align-items:center;padding:11px 12px;border-radius:14px;border:1px solid var(--line);background:var(--surface);text-align:left;width:100%}
+.unit .n{font-family:var(--display);font-weight:900;width:28px;text-align:center;font-variant-numeric:tabular-nums}
+.unit.done .n{color:var(--ok)}
+.unit div{min-width:0}
+.tr{color:var(--muted);font-size:.9rem}
+.fix{border-left:3px solid var(--nino);padding-left:10px;font-size:.9rem}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:99px;font-weight:700;font-size:.88rem;z-index:20;max-width:90vw;text-align:center}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="app" id="app">
+  <div class="top">
+    <div>
+      <div class="eyebrow" id="today">Hoje</div>
+      <h1>Aulas das Quíntuplas</h1>
+    </div>
+    <div class="dots" aria-hidden="true"><i style="background:var(--ichika)"></i><i style="background:var(--nino)"></i><i style="background:var(--miku)"></i><i style="background:var(--yotsuba)"></i><i style="background:var(--itsuki)"></i></div>
+  </div>
+  <main id="view"><div class="panel"><p class="muted"><span class="spin"></span> Carregando seu progresso…</p></div></main>
+</div>
+
+<nav class="tabs" aria-label="Seções"><div class="in" role="tablist" id="tabs"></div></nav>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ======================= DADOS ======================= */
+const SIS = {
+  ichika:{name:"Ichika",c:"var(--ichika)",vibe:"a irmã mais velha, atriz, calma, provocadora de leve e carinhosa",subject:"escuta"},
+  nino:{name:"Nino",c:"var(--nino)",vibe:"exigente e um pouco tsundere: cobra, reclama, mas no fundo se importa muito",subject:"vocabulário"},
+  miku:{name:"Miku",c:"var(--miku)",vibe:"tímida, fala pouco e baixinho, ama história e chá verde",subject:"leitura"},
+  yotsuba:{name:"Yotsuba",c:"var(--yotsuba)",vibe:"muito animada, positiva, esportista, comemora tudo",subject:"conversação"},
+  itsuki:{name:"Itsuki",c:"var(--itsuki)",vibe:"séria, estudiosa, formal, adora comida",subject:"gramática"}
+};
+const TABS=[
+  {id:"inicio",label:"Início",s:"nino"},
+  {id:"aula",label:"Aula",s:"itsuki"},
+  {id:"cartas",label:"Cartas",s:"miku"},
+  {id:"conversa",label:"Conversa",s:"yotsuba"},
+  {id:"ouvir",label:"Ônibus",s:"ichika"}
+];
+const UNITS=[
+  {t:"Apresentações: I am / You are",f:"verbo to be no presente, se apresentar, my/your",s:"itsuki"},
+  {t:"Rotina: present simple",f:"present simple com I/you/he/she, -s na 3ª pessoa, rotina de escola",s:"itsuki"},
+  {t:"Fazendo perguntas",f:"do/does, what/where/when/why/who/how em perguntas simples",s:"yotsuba"},
+  {t:"Gostos e vontades",f:"like, love, want, can, can't, would like",s:"nino"},
+  {t:"O passado com was/were",f:"was/were, there was, yesterday, last week",s:"miku"},
+  {t:"Passado: verbos regulares e irregulares",f:"past simple -ed e irregulares comuns (went, said, saw, made, thought)",s:"miku"},
+  {t:"Futuro: will e going to",f:"will, going to, promessas e planos",s:"ichika"},
+  {t:"Sentimentos e romance",f:"feel, miss, like vs love, be worried, be embarrassed, confess, frases de visual novel",s:"nino"},
+  {t:"Acontecendo agora",f:"present continuous, what are you doing?, descrever cenas",s:"yotsuba"},
+  {t:"Comparações",f:"comparativos e superlativos (better, the best, more ... than)",s:"itsuki"},
+  {t:"Phrasal verbs de diálogo",f:"give up, find out, look forward to, hang out, make up, figure out",s:"ichika"},
+  {t:"Lendo uma visual novel",f:"ler diálogos curtos, entender escolhas e consequências, contrações (I'm, don't, gonna, wanna)",s:"miku"}
+];
+// Fallback de aula 1 (se a IA não estiver disponível)
+const LESSON1={title:"Apresentações: I am / You are",teacher:"itsuki",
+  intro:"O verbo to be (ser/estar) é a base de tudo. No presente: I am (eu sou), you are (você é), he/she is (ele/ela é), we are (nós somos), they are (eles são). Na fala, vira contração: I'm, you're, she's.",
+  examples:[{en:"I'm Fuutarou. I'm your tutor.",pt:"Eu sou o Fuutarou. Eu sou seu tutor."},{en:"She is my sister.",pt:"Ela é minha irmã."},{en:"We are quintuplets.",pt:"Nós somos quíntuplas."},{en:"Are you hungry?",pt:"Você está com fome?"}],
+  exercises:[
+    {q:"Complete: I ___ a student.",options:["am","is","are"],answer:0,explain:"Com I usamos sempre am."},
+    {q:"Complete: She ___ my teacher.",options:["am","is","are"],answer:1,explain:"He/she/it usam is."},
+    {q:"Qual é a contração de 'you are'?",options:["you'm","your","you're"],answer:2,explain:"you are = you're. 'Your' é 'seu/sua'."},
+    {q:"Traduza: 'Nós somos irmãs.'",options:["We is sisters.","We are sisters.","Us are sisters."],answer:1,explain:"We + are."},
+    {q:"Como perguntar 'Você está cansado?'",options:["You are tired?","Are you tired?","Is you tired?"],answer:1,explain:"Na pergunta, o verbo to be vem antes: Are you…?"}
+  ]};
+const DECK=[
+ ["choose","escolher","Choose your answer.","jogo"],["save","salvar","Don't forget to save.","jogo"],["load","carregar","Load the last save.","jogo"],["continue","continuar","Do you want to continue?","jogo"],["skip","pular","Skip this scene.","jogo"],["route","rota (caminho da história)","This is Miku's route.","jogo"],["ending","final","I got the good ending!","jogo"],["choice","escolha","Your choice matters.","jogo"],["settings","configurações","Open the settings.","jogo"],["chapter","capítulo","Chapter three begins.","jogo"],
+ ["sister","irmã","She is my older sister.","família"],["older","mais velho(a)","Ichika is the oldest.","família"],["younger","mais novo(a)","Itsuki is the youngest.","família"],["twins","gêmeos","They are not twins, they are quintuplets.","família"],["father","pai","Their father is a doctor.","família"],
+ ["tutor","professor particular","You are our tutor.","escola"],["exam","prova","The exam is tomorrow.","escola"],["grade","nota","I got a bad grade.","escola"],["fail","reprovar / falhar","I don't want to fail.","escola"],["pass","passar (de ano/prova)","We all passed!","escola"],["study","estudar","Let's study together.","escola"],["homework","dever de casa","Did you do your homework?","escola"],["library","biblioteca","Meet me at the library.","escola"],["classroom","sala de aula","She is in the classroom.","escola"],
+ ["feel","sentir","How do you feel?","sentimentos"],["happy","feliz","I'm so happy!","sentimentos"],["sad","triste","Why are you sad?","sentimentos"],["angry","bravo(a)","Nino is angry again.","sentimentos"],["shy","tímido(a)","Miku is shy.","sentimentos"],["embarrassed","envergonhado(a)","Don't look at me, I'm embarrassed!","sentimentos"],["worried","preocupado(a)","I was worried about you.","sentimentos"],["jealous","com ciúmes","Are you jealous?","sentimentos"],["miss","sentir falta","I miss you.","sentimentos"],["promise","promessa / prometer","I promise I'll come back.","sentimentos"],["confess","confessar","She wants to confess.","sentimentos"],["love","amor / amar","I love you.","sentimentos"],["like","gostar","I like you a lot.","sentimentos"],["kiss","beijo / beijar","It was my first kiss.","sentimentos"],["date","encontro","Is this a date?","sentimentos"],["wedding","casamento","The wedding is today.","sentimentos"],["bride","noiva","Who is the bride?","sentimentos"],["remember","lembrar","Do you remember me?","sentimentos"],["forget","esquecer","I'll never forget this day.","sentimentos"],
+ ["maybe","talvez","Maybe tomorrow.","conversa"],["actually","na verdade","Actually, I like it.","conversa"],["really","sério? / muito","Really? That's amazing!","conversa"],["anyway","enfim / de qualquer forma","Anyway, let's go.","conversa"],["wait","esperar / espera","Wait for me!","conversa"],["sorry","desculpa","Sorry, I'm late.","conversa"],["thank you","obrigado(a)","Thank you for today.","conversa"],["of course","claro","Of course I'll help.","conversa"],["never mind","deixa pra lá","Never mind, it's nothing.","conversa"],["what's wrong?","o que houve?","What's wrong? You look sad.","conversa"],["I don't know","eu não sei","I don't know what to say.","conversa"],["together","juntos","Let's eat together.","conversa"],["hungry","com fome","Itsuki is always hungry.","conversa"],["delicious","delicioso","This bread is delicious!","conversa"],["trip","viagem","The school trip is next week.","conversa"],["summer","verão","A summer festival.","conversa"],["fireworks","fogos de artifício","Let's watch the fireworks.","conversa"],["festival","festival","Are you going to the festival?","conversa"]
+].map((d,i)=>({id:"w"+i,en:d[0],pt:d[1],ex:d[2],cat:d[3]}));
+const PHRASES=[
+ ["Good morning! Did you sleep well?","Bom dia! Dormiu bem?"],["I'm your new tutor.","Eu sou seu novo tutor."],["We don't need a tutor.","A gente não precisa de tutor."],["Let's study together today.","Vamos estudar juntos hoje."],["I'm hungry. Can we eat first?","Estou com fome. Podemos comer primeiro?"],["Where are you going?","Aonde você vai?"],["I was worried about you.","Eu estava preocupada com você."],["Don't look at me like that.","Não me olha desse jeito."],["Thank you for everything.","Obrigada por tudo."],["I'll never forget this day.","Nunca vou esquecer este dia."],["Can you tell us apart?","Você consegue diferenciar a gente?"],["Who do you think I am?","Quem você acha que eu sou?"],["The exam is next week.","A prova é semana que vem."],["I don't want to lose.","Eu não quero perder."],["Do you remember the promise?","Você lembra da promessa?"],["It's not like I care about you.","Não é como se eu me importasse com você."],["She went home early.","Ela foi pra casa cedo."],["We are five, but we are one.","Somos cinco, mas somos uma."],["Please choose one of us.","Por favor, escolha uma de nós."],["I like you.","Eu gosto de você."],["Let's go to the festival tonight.","Vamos ao festival hoje à noite."],["What are you doing here?","O que você está fazendo aqui?"],["I made lunch for you.","Eu fiz almoço pra você."],["See you tomorrow at school.","Até amanhã na escola."],["This is the best day ever!","Este é o melhor dia de todos!"]
+].map(p=>({en:p[0],pt:p[1]}));
+const TEST=[
+ {q:"Complete: My name ___ Miku.",o:["am","is","are"],a:1},
+ {q:"O que significa 'Choose your answer'?",o:["Salve sua resposta","Escolha sua resposta","Pule sua resposta"],a:1},
+ {q:"Complete: They ___ my sisters.",o:["is","am","are"],a:2},
+ {q:"'I miss you' significa:",o:["Eu errei você","Sinto sua falta","Eu perdi você"],a:1},
+ {q:"Complete: She ___ to school every day.",o:["go","goes","going"],a:1},
+ {q:"Qual é a pergunta correta?",o:["Do she like bread?","Does she like bread?","She likes bread does?"],a:1},
+ {q:"Passado de 'go':",o:["goed","went","gone to"],a:1},
+ {q:"Complete: Yesterday I ___ very tired.",o:["am","was","were"],a:1},
+ {q:"Leia: \"Nino got angry because Fuutarou forgot her birthday.\" Por que a Nino ficou brava?",o:["Ele esqueceu o aniversário dela","Ele chegou atrasado","Ele comeu o bolo"],a:0},
+ {q:"'I'm going to study tonight' fala de:",o:["Passado","Plano para o futuro","Algo que sempre acontece"],a:1},
+ {q:"Ouça a frase e escolha o que você ouviu.",listen:"Let's watch the fireworks together.",o:["Let's wash the four works together.","Let's watch the fireworks together.","Let's walk to the fireworks tomorrow."],a:1},
+ {q:"Ouça e escolha a tradução.",listen:"I was worried about you.",o:["Eu estava preocupada com você.","Eu estou cansada de você.","Eu esperei por você."],a:0},
+ {q:"Complete: Itsuki is ___ than Yotsuba at math.",o:["good","better","best"],a:1},
+ {q:"'Find out' significa:",o:["Descobrir","Encontrar fora","Desistir"],a:0},
+ {q:"Leia: \"If you choose the library, you will meet Miku.\" O que acontece se você escolher a biblioteca?",o:["Você encontra a Miku","Você perde a prova","Você vai para casa"],a:0}
+];
+const GOAL_XP=50, TEST_EVERY=30;
+
+/* ======================= ESTADO ======================= */
+const pad=n=>String(n).padStart(2,"0");
+const dkey=(d=new Date())=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const addDays=(k,n)=>{const [y,m,d]=k.split("-").map(Number);return dkey(new Date(y,m-1,d+n))};
+const diffDays=(a,b)=>{const p=k=>{const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d)};return Math.round((p(b)-p(a))/864e5)};
+let S={xp:0,start:dkey(),cards:{},done:{},tests:[],lastTeacher:"nino"};
+let DAYS={}; // dkey -> {xp,min,acts}
+let db=null, sample=null, tab="inicio", mode="local";
+
+const LS="quint-ingles-v1";
+function lsSave(){try{localStorage.setItem(LS,JSON.stringify({S,DAYS}))}catch(e){}}
+function lsLoad(){try{const v=JSON.parse(localStorage.getItem(LS)||"null");if(v){S=Object.assign(S,v.S);DAYS=v.DAYS||{}}}catch(e){}}
+
+let saveT=null;
+function saveState(){lsSave();if(!db)return;clearTimeout(saveT);saveT=setTimeout(()=>{db.doc("estado/main").set(JSON.parse(JSON.stringify(S))).catch(e=>console.warn(e))},700)}
+const dayT={};
+function saveDay(k){lsSave();if(!db)return;clearTimeout(dayT[k]);dayT[k]=setTimeout(()=>{db.doc("dias/"+k).set(Object.assign({date:k},DAYS[k])).catch(e=>console.warn(e))},700)}
+
+function gain(xp,act){
+  const k=dkey();const d=DAYS[k]||(DAYS[k]={xp:0,min:0,acts:{}});
+  d.xp+=xp;d.acts[act]=(d.acts[act]||0)+1;S.xp+=xp;
+  saveDay(k);saveState();
+}
+// tempo de estudo: conta minutos com a página visível e alguma interação no último minuto
+let lastAct=Date.now();
+["pointerdown","keydown"].forEach(e=>addEventListener(e,()=>lastAct=Date.now(),{passive:true}));
+setInterval(()=>{if(document.visibilityState!=="visible"||Date.now()-lastAct>60000)return;const k=dkey();const d=DAYS[k]||(DAYS[k]={xp:0,min:0,acts:{}});d.min=(d.min||0)+1;saveDay(k)},60000);
+
+function streak(){let n=0,k=dkey();if(!(DAYS[k]&&DAYS[k].xp>0))k=addDays(k,-1);while(DAYS[k]&&DAYS[k].xp>0){n++;k=addDays(k,-1)}return n}
+function todayXP(){return (DAYS[dkey()]||{}).xp||0}
+function nextTest(){const last=S.tests.length?S.tests[S.tests.length-1].date:null;return last?addDays(last,TEST_EVERY):dkey()}
+
+/* ======================= UTIL ======================= */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ava=(k,size)=>`<div class="ava" style="background:${SIS[k].c}${size?";width:"+size+"px;height:"+size+"px":""}" aria-hidden="true">${SIS[k].name[0]}</div>`;
+function msg(k,html){return `<div class="msg">${ava(k)}<div class="bubble"><div class="who" style="color:${SIS[k].c}">${SIS[k].name}</div>${html}</div></div>`}
+function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2200)}
+let voice=null;
+function pickVoice(){try{const v=speechSynthesis.getVoices();voice=v.find(x=>/en[-_]US/i.test(x.lang)&&/female|samantha|google/i.test(x.name))||v.find(x=>/^en/i.test(x.lang))||null}catch(e){}}
+try{speechSynthesis.onvoiceschanged=pickVoice;pickVoice()}catch(e){}
+function speak(t,rate=0.9){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=rate;if(voice)u.voice=voice;speechSynthesis.speak(u)}catch(e){toast("Seu navegador não tem voz em inglês")}}
+const norm=s=>s.toLowerCase().replace(/[’']/g,"'").replace(/[^a-z0-9' ]/g," ").replace(/\s+/g," ").trim();
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+
+/* ======================= TELAS ======================= */
+function renderTabs(){
+  $("#tabs").innerHTML=TABS.map(t=>`<button role="tab" id="tab-${t.id}" aria-selected="${t.id===tab}" data-tab="${t.id}"><span class="d" style="background:${SIS[t.s].c}">${SIS[t.s].name[0]}</span>${t.label}</button>`).join("");
+}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b){go(b.dataset.tab)}});
+function go(t){tab=t;try{speechSynthesis.cancel()}catch(e){}renderTabs();render();scrollTo(0,0);if(location.hash!=="#"+t)history.replaceState(null,"","#"+t)}
+function render(){({inicio:vHome,aula:vAula,cartas:vCartas,conversa:vConversa,ouvir:vOuvir,teste:vTeste}[tab]||vHome)()}
+
+function homeMessage(){
+  const x=todayXP(),st=streak(),h=new Date().getHours();
+  if(!S.tests.length) return ["itsuki","Antes de começar, faça o <b>teste de nível</b>. São 15 perguntas, uns 8 minutos. Assim eu sei por onde começar com você."];
+  if(x>=GOAL_XP) return ["yotsuba",`Meta de hoje batida! ${st>1?`Já são <b>${st} dias seguidos</b>!`:""} Você está cada vez mais perto de jogar a sua rota. 🍀`];
+  if(x>0) return ["miku",`Você já fez ${x} de ${GOAL_XP} XP hoje… só mais um pouco. Eu espero você.`];
+  if(h>=19) return ["nino","Ei! Já são "+h+"h e você <b>não estudou nada hoje</b>. Não pense que eu esqueci. Abre uma aula agora, nem que sejam 10 minutos!"];
+  if(h>=15) return ["nino","Agora é seu horário livre, né? Então nada de enrolar. A Yotsuba está esperando na <b>Conversa</b>."];
+  return ["ichika","Bom dia. Hoje à tarde tem conversa com a Yotsuba e no ônibus eu treino escuta com você. Combinado?"];
+}
+function vHome(){
+  const [who,text]=homeMessage(),x=todayXP(),st=streak(),nt=nextTest(),dd=diffDays(dkey(),nt);
+  const due=dueCards().length;
+  const unit=Math.min(Object.keys(S.done).length,UNITS.length-1);
+  $("#view").innerHTML=`
+  <div style="display:flex;flex-direction:column;gap:16px">
+    ${msg(who,`<p>${text}</p>`)}
+    <section class="panel" aria-label="Progresso">
+      <div class="stats">
+        <div class="stat"><span class="eyebrow">Sequência</span><b>${st}</b><span class="small muted">${st===1?"dia":"dias"}</span></div>
+        <div class="stat"><span class="eyebrow">Hoje</span><b>${x}</b><span class="small muted">de ${GOAL_XP} XP</span></div>
+        <div class="stat"><span class="eyebrow">Total</span><b>${S.xp}</b><span class="small muted">XP</span></div>
+      </div>
+      <div class="bar" aria-hidden="true"><span style="width:${Math.min(100,x/GOAL_XP*100)}%"></span></div>
+    </section>
+    <section class="panel">
+      <div class="row" style="justify-content:space-between"><h2>Seu dia</h2><span class="chip">${Object.keys(S.done).length}/${UNITS.length} aulas</span></div>
+      <button class="slot" data-tab="aula"><span class="stripe" style="background:var(--itsuki)"></span><span class="time">15:15</span><div><b>Aula da Itsuki</b><div class="small muted">${esc(UNITS[unit].t)} · ~10 min</div></div></button>
+      <button class="slot" data-tab="conversa"><span class="stripe" style="background:var(--yotsuba)"></span><span class="time">15:30</span><div><b>Conversa com a Yotsuba</b><div class="small muted">Escreva ou dite em voz alta pelo microfone do teclado · ~15 min</div></div></button>
+      <button class="slot" data-tab="cartas"><span class="stripe" style="background:var(--miku)"></span><span class="time">16:00</span><div><b>Cartas da Miku</b><div class="small muted">${due} cartas para revisar · ~5 min</div></div></button>
+      <button class="slot" data-tab="ouvir"><span class="stripe" style="background:var(--ichika)"></span><span class="time">18:00</span><div><b>Ônibus com a Ichika</b><div class="small muted">Escutar e digitar frases, sem falar · ~15 min</div></div></button>
+    </section>
+    <section class="panel">
+      <div class="row" style="justify-content:space-between"><h2>Teste de nível</h2><span class="chip">${S.tests.length?esc(S.tests[S.tests.length-1].level):"sem nota"}</span></div>
+      <p class="muted">${!S.tests.length?"Faça o primeiro teste para medir seu ponto de partida.":dd<=0?"Chegou o dia do teste! Vamos ver quanto você evoluiu.":`Próximo teste em <b>${dd} ${dd===1?"dia":"dias"}</b> (${nt.split("-").reverse().join("/")}).`}</p>
+      ${S.tests.length?`<div class="small muted">${S.tests.map(t=>`${t.date.split("-").reverse().slice(0,2).join("/")}: ${t.score}/15`).join(" · ")}</div>`:""}
+      <button class="btn ${(!S.tests.length||dd<=0)?"":"ghost"}" id="goTest">${S.tests.length?(dd<=0?"Fazer o teste":"Refazer agora"):"Fazer o teste de nível"}</button>
+    </section>
+    <section class="panel">
+      <h3>A meta</h3>
+      <p class="muted small">Jogar <i>The Quintessential Quintuplets: Five Memories Spent With You</i> (PS4) em inglês e entender os finais de cada irmã. O jogo é quase todo leitura, então leitura e vocabulário de diálogo vêm primeiro. Escuta e fala vêm junto.</p>
+    </section>
+    <p class="small muted" style="text-align:center">${mode==="db"?"Progresso salvo na sua conta.":"Progresso salvo só neste aparelho."}</p>
+  </div>`;
+  $("#goTest").onclick=()=>{testState=null;go("teste")};
+}
+
+/* ---------- AULA ---------- */
+let lesson=null,lessonIdx=null,lessonPos=0,lessonScore=0;
+function vAula(){
+  if(lesson) return vLesson();
+  const next=UNITS.findIndex((u,i)=>!S.done[i]);
+  $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    ${msg("itsuki",`<p>Cada aula tem uma explicação curta em português, exemplos com áudio e 5 exercícios. Se acertar 4 ou mais, a aula conta como concluída.</p>`)}
+    <section class="panel"><h2>Trilha A1 → A2</h2><div class="units">
+    ${UNITS.map((u,i)=>`<button class="unit ${S.done[i]?"done":""}" data-unit="${i}"><span class="n">${S.done[i]?"✓":i+1}</span><div><b>${esc(u.t)}</b><div class="small muted">com ${SIS[u.s].name}${i===next?" · próxima":""}</div></div></button>`).join("")}
+    </div></section></div>`;
+  document.querySelectorAll("[data-unit]").forEach(b=>b.onclick=()=>startLesson(+b.dataset.unit));
+}
+async function startLesson(i){
+  lessonIdx=i;lessonPos=-1;lessonScore=0;const u=UNITS[i];
+  $("#view").innerHTML=`<div class="panel">${msg(u.s,`<p><span class="spin"></span> Preparando a aula “${esc(u.t)}”…</p>`)}</div>`;
+  if(!sample){ if(i===0){lesson=LESSON1;return vLesson()} $("#view").innerHTML=`<div class="panel">${msg("itsuki","<p>As aulas novas são montadas pela IA, que não está disponível agora. A Aula 1 funciona sem ela. Abra pelo app do Claude, logado na sua conta.</p>")}<button class="btn ghost" id="back">Voltar</button></div>`;$("#back").onclick=()=>{lesson=null;vAula()};return}
+  const lvl=S.tests.length?S.tests[S.tests.length-1].level:"iniciante (lê um pouco, entende pouco ouvindo, fala pouco)";
+  const prompt=`Você é ${SIS[u.s].name}, uma das quíntuplas Nakano, dando aula de inglês para um aluno brasileiro adolescente. Personalidade: ${SIS[u.s].vibe}. Nível do aluno: ${lvl}. Ele quer jogar uma visual novel do anime em inglês.
+Monte a aula "${u.t}" com foco em: ${u.f}.
+Responda SOMENTE com JSON neste formato:
+{"title":string,"intro":string (explicação em português, 3 a 5 frases simples, no jeito de falar da personagem),"examples":[{"en":string,"pt":string}] (4 a 5 exemplos curtos com cenas de escola, irmãs, provas, festivais),"exercises":[{"q":string,"options":[string,string,string],"answer":número 0-2,"explain":string em português curto}] (exatamente 5, variando: completar, tradução, escolher a frase correta)}`;
+  try{
+    const r=await sample.json(prompt,{modelTier:"default"});
+    if(!r||!Array.isArray(r.exercises)||!r.exercises.length) throw new Error("formato");
+    lesson={title:r.title||u.t,teacher:u.s,intro:r.intro||"",examples:(r.examples||[]).slice(0,6),exercises:r.exercises.slice(0,5).map(e=>({q:e.q,options:e.options,answer:Number(e.answer)||0,explain:e.explain||""}))};
+    vLesson();
+  }catch(e){
+    const code=e&&e.code;
+    if(i===0){lesson=LESSON1;return vLesson()}
+    $("#view").innerHTML=`<div class="panel">${msg("itsuki",`<p>${code==="rate_limited"?"Muitas aulas em pouco tempo. Espere alguns minutos e tente de novo.":code==="not_granted"?"A IA não foi liberada nesta página. Toque em tentar de novo e permita o acesso.":"Não consegui montar a aula agora. Tente de novo."}</p>`)}<div class="row"><button class="btn" id="retry">Tentar de novo</button><button class="btn ghost" id="back">Voltar</button></div></div>`;
+    $("#retry").onclick=()=>startLesson(i);$("#back").onclick=()=>{lesson=null;vAula()};
+  }
+}
+function vLesson(){
+  const L=lesson,t=L.teacher||"itsuki";
+  if(lessonPos===-1){
+    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+      <div class="row"><button class="btn line" id="back">← Trilha</button><span class="eyebrow">Aula ${lessonIdx+1}</span></div>
+      <h2>${esc(L.title)}</h2>
+      ${msg(t,`<p>${esc(L.intro)}</p>`)}
+      <section class="panel"><h3>Exemplos</h3>
+      ${L.examples.map((x,i)=>`<button class="opt" data-say="${i}"><b>🔊 ${esc(x.en)}</b><div class="tr">${esc(x.pt)}</div></button>`).join("")}
+      </section>
+      <button class="btn full" id="startEx">Começar exercícios (${L.exercises.length})</button></div>`;
+    document.querySelectorAll("[data-say]").forEach(b=>b.onclick=()=>speak(L.examples[+b.dataset.say].en));
+    $("#back").onclick=()=>{lesson=null;vAula()};$("#startEx").onclick=()=>{lessonPos=0;vLesson()};return;
+  }
+  if(lessonPos>=L.exercises.length){
+    const pass=lessonScore>=Math.ceil(L.exercises.length*0.8);
+    if(pass&&!S.done[lessonIdx]){S.done[lessonIdx]=dkey();gain(30,"aula")}else gain(10,"aula");
+    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${msg(pass?"yotsuba":"nino",`<p>${pass?`Você acertou <b>${lessonScore} de ${L.exercises.length}</b>! Aula concluída. +30 XP`:`Você acertou ${lessonScore} de ${L.exercises.length}. Hmph, dá pra melhorar. Refaça amanhã e vai passar. +10 XP`}</p>`)}<button class="btn full" id="fin">Voltar para a trilha</button></div>`;
+    $("#fin").onclick=()=>{lesson=null;vAula()};return;
+  }
+  const ex=L.exercises[lessonPos];
+  $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    <div class="row" style="justify-content:space-between"><span class="eyebrow">Exercício ${lessonPos+1} de ${L.exercises.length}</span><span class="chip">${lessonScore} acertos</span></div>
+    <div class="bar"><span style="width:${lessonPos/L.exercises.length*100}%"></span></div>
+    <section class="panel"><h3>${esc(ex.q)}</h3><div class="opts">${ex.options.map((o,i)=>`<button class="opt" data-o="${i}">${esc(o)}</button>`).join("")}</div><div id="fb"></div></section></div>`;
+  document.querySelectorAll("[data-o]").forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.o,ok=i===ex.answer;if(ok)lessonScore++;
+    document.querySelectorAll("[data-o]").forEach(x=>{x.disabled=true;if(+x.dataset.o===ex.answer)x.classList.add("right")});if(!ok)b.classList.add("wrong");
+    $("#fb").innerHTML=`<div class="feedback"><b style="color:${ok?"var(--ok)":"var(--bad)"}">${ok?"Isso!":"Quase."}</b> ${esc(ex.explain)}</div><button class="btn full" id="nx" style="margin-top:10px">Próximo</button>`;
+    $("#nx").onclick=()=>{lessonPos++;vLesson()};
+  });
+}
+
+/* ---------- CARTAS (repetição espaçada) ---------- */
+const BOX_DAYS=[0,1,3,7,14,30];
+function dueCards(){
+  const k=dkey(),seen=[],fresh=[];
+  for(const c of DECK){const st=S.cards[c.id];if(st){if(st.due<=k)seen.push(c)}else fresh.push(c)}
+  const newToday=Object.values(S.cards).filter(s=>s.first===k).length;
+  return seen.concat(fresh.slice(0,Math.max(0,10-newToday)));
+}
+let cq=null,flip=false;
+function vCartas(){
+  if(!cq) cq=shuffle(dueCards());
+  const learned=Object.values(S.cards).filter(s=>s.box>=3).length;
+  if(!cq.length){
+    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${msg("miku",`<p>Acabaram as cartas de hoje… Você já domina <b>${learned}</b> de ${DECK.length} palavras. Volte amanhã, as que você errou vão aparecer de novo.</p>`)}<button class="btn ghost" id="more">Treinar mais 5 palavras novas</button></div>`;
+    $("#more").onclick=()=>{cq=shuffle(DECK.filter(c=>!S.cards[c.id])).slice(0,5);vCartas()};return;
+  }
+  const c=cq[0];
+  $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    <div class="row" style="justify-content:space-between"><span class="eyebrow">${cq.length} restantes · ${esc(c.cat)}</span><span class="chip">${learned}/${DECK.length} dominadas</span></div>
+    <button class="card" id="card" aria-label="Virar carta">
+      <span class="word">${esc(c.en)}</span>
+      ${flip?`<span style="font-size:1.15rem;font-weight:700">${esc(c.pt)}</span><span class="ex">${esc(c.ex)}</span>`:`<span class="muted small">Toque para ver o significado</span>`}
+    </button>
+    <div class="row"><button class="btn ghost" id="say">🔊 Ouvir</button>${flip?`<button class="btn ghost" id="sayex">🔊 Ouvir a frase</button>`:""}</div>
+    ${flip?`<div class="grade"><button class="btn" style="background:var(--bad)" data-g="0">Errei</button><button class="btn" style="background:var(--ichika)" data-g="1">Difícil</button><button class="btn" style="background:var(--ok)" data-g="2">Acertei</button></div>`:""}
+  </div>`;
+  $("#card").onclick=()=>{flip=!flip;if(flip)speak(c.en);vCartas()};
+  $("#say").onclick=()=>speak(c.en);
+  if(flip){$("#sayex").onclick=()=>speak(c.ex);
+    document.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{
+      const g=+b.dataset.g,k=dkey();const st=S.cards[c.id]||{box:0,first:k};
+      st.box=g===0?0:g===1?Math.max(1,st.box):Math.min(BOX_DAYS.length-1,st.box+1);
+      st.due=addDays(k,g===0?0:BOX_DAYS[st.box]);S.cards[c.id]=st;
+      cq.shift();if(g===0)cq.push(c);flip=false;gain(2,"cartas");vCartas();
+    });}
+}
+
+/* ---------- CONVERSA ---------- */
+let chatWho="yotsuba",chat=[],chatBusy=false;
+const OPEN={yotsuba:"Hi! I'm Yotsuba! How are you today?",nino:"Hmph. You're late. What did you do today?",miku:"Hi… do you like history? …What do you like?",itsuki:"Good afternoon. Did you eat lunch? What did you eat?",ichika:"Hey, little tutor. Tell me about your day."};
+function vConversa(){
+  if(!chat.length) chat=[{role:"assistant",reply:OPEN[chatWho],translation:"",correction:""}];
+  $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">
+    <div class="pick" role="group" aria-label="Com quem conversar">${Object.keys(SIS).map(k=>`<button aria-pressed="${k===chatWho}" data-who="${k}">${ava(k)}${SIS[k].name}</button>`).join("")}</div>
+    <div class="chat" id="chat">${chat.map(chatHtml).join("")}</div>
+    ${!sample?`<div class="panel"><p class="small muted">A conversa usa a IA e precisa ser aberta no app do Claude, com a sua conta. As outras abas funcionam normalmente.</p></div>`:""}
+    <div class="panel" style="padding:12px">
+      <label class="small muted" for="say">Responda em inglês. Para treinar a fala, toque no 🎤 do teclado do celular e fale.</label>
+      <textarea id="say" rows="2" placeholder="I'm fine, thank you…" ${!sample||chatBusy?"disabled":""}></textarea>
+      <div class="row"><button class="btn" id="send" ${!sample||chatBusy?"disabled":""}>Enviar</button><button class="btn ghost" id="help" ${!sample||chatBusy?"disabled":""}>Não sei responder</button><button class="btn line" id="reset">Recomeçar</button></div>
+    </div></div>`;
+  document.querySelectorAll("[data-who]").forEach(b=>b.onclick=()=>{chatWho=b.dataset.who;chat=[];vConversa()});
+  $("#reset").onclick=()=>{chat=[];vConversa()};
+  const ta=$("#say");
+  $("#send").onclick=()=>sendChat(ta.value.trim());
+  $("#help").onclick=()=>sendChat("(Não sei como responder. Me dê uma resposta modelo simples para eu copiar e explique.)",true);
+  ta.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendChat(ta.value.trim())}});
+  document.querySelectorAll("[data-speak]").forEach(b=>b.onclick=()=>speak(b.dataset.speak));
+  const last=$("#chat").lastElementChild;if(last&&chat.length>1)last.scrollIntoView({block:"nearest"});
+}
+function chatHtml(m){
+  if(m.role==="user") return `<div class="msg me"><div class="bubble"><p>${esc(m.text)}</p></div></div>`;
+  if(m.pending) return msg(chatWho,`<p><span class="spin"></span> digitando…</p>`);
+  return msg(chatWho,`<p>${esc(m.reply)}</p>${m.translation?`<p class="tr">${esc(m.translation)}</p>`:""}${m.correction?`<p class="fix">✏️ ${esc(m.correction)}</p>`:""}${m.model?`<p class="fix" style="border-color:var(--yotsuba)">💬 Você pode dizer: <b>${esc(m.model)}</b></p>`:""}<div class="row"><button class="btn line" style="padding:4px 10px;font-size:.8rem" data-speak="${esc(m.reply)}">🔊 Ouvir</button></div>`);
+}
+async function sendChat(text,isHelp){
+  if(!text||chatBusy||!sample)return;
+  chat.push(isHelp?{role:"user",text:"🤔 Não sei responder"}:{role:"user",text});
+  chat.push({role:"assistant",pending:true});chatBusy=true;vConversa();
+  const sys=`Você é ${SIS[chatWho].name} Nakano, de The Quintessential Quintuplets. Personalidade: ${SIS[chatWho].vibe}. Você conversa em inglês com um aluno brasileiro iniciante (lê melhor do que escuta e fala) para ele praticar. Regras: responda em inglês MUITO simples, 1 a 2 frases curtas, e termine com uma pergunta fácil para ele continuar. Não fale de conteúdo adulto. Se a mensagem dele tiver erro de inglês ou palavras em português, mostre a forma correta em "correction" (em português, curto e gentil, citando a frase certa em inglês); se estiver certa, deixe "correction" vazio. Se ele pedir ajuda, dê em "model" uma resposta modelo simples. Responda SOMENTE com JSON: {"reply":string,"translation":string (tradução da sua reply para português),"correction":string,"model":string}`;
+  const hist=chat.filter(m=>!m.pending).slice(-12);
+  const msgs=[{role:"user",content:sys+"\n\nComece a conversa."}];
+  for(const m of hist){if(m.role==="assistant")msgs.push({role:"assistant",content:JSON.stringify({reply:m.reply})});else msgs.push({role:"user",content:m.text==="🤔 Não sei responder"?text:m.text})}
+  if(msgs[msgs.length-1].role!=="user")msgs.push({role:"user",content:text});
+  try{
+    const r=await sample.json(msgs,{modelTier:"quick",cache:false});
+    chat.pop();chat.push({role:"assistant",reply:String(r.reply||"…"),translation:String(r.translation||""),correction:String(r.correction||""),model:String(r.model||"")});
+    gain(3,"conversa");
+  }catch(e){chat.pop();chat.push({role:"assistant",reply:"(…)",translation:e&&e.code==="rate_limited"?"Muitas mensagens seguidas. Espere um pouco e tente de novo.":"Não consegui responder agora. Tente enviar de novo.",correction:""})}
+  chatBusy=false;vConversa();if(!isHelp){const ta=$("#say");if(ta)ta.value=""}
+}
+
+/* ---------- ÔNIBUS (escuta + ditado) ---------- */
+let busQ=null,busPos=0,busShown=false,busMode="ditado",busOk=0;
+function vOuvir(){
+  if(!busQ){busQ=shuffle(PHRASES).slice(0,10);busPos=0;busOk=0;busShown=false}
+  if(busPos>=busQ.length){
+    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${msg("ichika",`<p>Fim da viagem. Você acertou <b>${busOk} de ${busQ.length}</b> frases. Nada mal, tutor.</p>`)}<button class="btn full" id="again">Mais 10 frases</button></div>`;
+    $("#again").onclick=()=>{busQ=null;vOuvir()};return;
+  }
+  const p=busQ[busPos];
+  $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    ${busPos===0&&!busShown?msg("ichika","<p>Modo ônibus: põe o fone, escuta a frase e digita o que ouviu. Pode repetir quantas vezes quiser, inclusive bem devagar.</p>"):""}
+    <div class="row" style="justify-content:space-between"><span class="eyebrow">Frase ${busPos+1} de ${busQ.length}</span><span class="chip">${busOk} acertos</span></div>
+    <div class="row"><button class="btn" id="p1">🔊 Ouvir</button><button class="btn ghost" id="p2">🐢 Devagar</button></div>
+    <section class="panel">
+      <label for="dict" class="small muted">Digite o que você ouviu</label>
+      <input type="text" id="dict" autocomplete="off" autocapitalize="off" spellcheck="false" ${busShown?"disabled":""}>
+      ${busShown?"":`<div class="row"><button class="btn" id="chk">Conferir</button><button class="btn line" id="show">Mostrar</button></div>`}
+      <div id="bfb"></div>
+    </section></div>`;
+  $("#p1").onclick=()=>speak(p.en,0.9);$("#p2").onclick=()=>speak(p.en,0.6);
+  const inp=$("#dict");
+  const finish=(ok,typed)=>{busShown=true;if(ok){busOk++;gain(5,"onibus")}else gain(1,"onibus");
+    const ws=norm(p.en).split(" "),ts=new Set(norm(typed||"").split(" "));
+    $("#bfb").innerHTML=`<div class="feedback"><b style="color:${ok?"var(--ok)":"var(--bad)"}">${ok?"Perfeito!":"Era assim:"}</b><p style="font-size:1.05rem;margin-top:4px">${ws.map(w=>`<span style="${ts.has(w)?"":"text-decoration:underline;color:var(--bad)"}">${esc(w)}</span>`).join(" ")}</p><p class="tr">${esc(p.pt)}</p></div><button class="btn full" id="bn" style="margin-top:10px">Próxima</button>`;
+    inp.disabled=true;$("#bn").onclick=()=>{busPos++;busShown=false;vOuvir()};document.querySelectorAll("#chk,#show").forEach(b=>b.remove())};
+  if(!busShown){$("#chk").onclick=()=>finish(norm(inp.value)===norm(p.en),inp.value);$("#show").onclick=()=>finish(false,inp.value);
+    inp.addEventListener("keydown",e=>{if(e.key==="Enter")finish(norm(inp.value)===norm(p.en),inp.value)});}
+}
+
+/* ---------- TESTE ---------- */
+let testState=null;
+function vTeste(){
+  if(!testState) testState={i:-1,score:0};
+  const T=testState;
+  if(T.i===-1){
+    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px"><button class="btn line" data-tab="inicio" style="align-self:flex-start">← Início</button>${msg("itsuki",`<p>Teste de nível: 15 perguntas de vocabulário, gramática, leitura e escuta. Não use tradutor, tá? O objetivo é ver onde você está de verdade. A cada ${TEST_EVERY} dias a gente refaz para medir a evolução.</p>`)}<button class="btn full" id="tgo">Começar</button></div>`;
+    $("#tgo").onclick=()=>{T.i=0;vTeste()};return;
+  }
+  if(T.i>=TEST.length){
+    const s=T.score,level=s<=5?"Iniciante":s<=10?"A1":s<=13?"A2":"A2+";
+    if(!T.saved){T.saved=true;S.tests.push({date:dkey(),score:s,level});gain(50,"teste")}
+    const prev=S.tests.length>1?S.tests[S.tests.length-2]:null;
+    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${msg("itsuki",`<p>Resultado: <b>${s}/15</b>. Nível: <b>${level}</b>.${prev?` No teste anterior foram ${prev.score}/15.`:""} Próximo teste em ${TEST_EVERY} dias.</p>`)}${msg("nino",`<p>${s>=11?"Hmph… nada mal. Mas não fique convencido.":"Tá, agora você sabe onde está. Sem desculpas: aula todo dia."}</p>`)}<button class="btn full" data-tab="inicio">Voltar ao início</button></div>`;
+    return;
+  }
+  const q=TEST[T.i];
+  $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    <div class="row" style="justify-content:space-between"><span class="eyebrow">Pergunta ${T.i+1} de ${TEST.length}</span></div>
+    <div class="bar"><span style="width:${T.i/TEST.length*100}%"></span></div>
+    <section class="panel"><h3>${esc(q.q)}</h3>${q.listen?`<div class="row"><button class="btn ghost" id="tl">🔊 Ouvir</button><button class="btn line" id="tl2">🐢 Devagar</button></div>`:""}
+    <div class="opts">${q.o.map((o,i)=>`<button class="opt" data-t="${i}">${esc(o)}</button>`).join("")}</div></section></div>`;
+  if(q.listen){$("#tl").onclick=()=>speak(q.listen);$("#tl2").onclick=()=>speak(q.listen,0.6)}
+  document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{if(+b.dataset.t===q.a)T.score++;T.i++;vTeste()});
+}
+
+/* ======================= INÍCIO ======================= */
+function start(){
+  $("#today").textContent=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"});
+  const h=(location.hash||"").slice(1);if(TABS.some(t=>t.id===h))tab=h;
+  renderTabs();render();
+}
+lsLoad();start();
+addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(h!==tab&&(TABS.some(t=>t.id===h)||h==="teste"))go(h)});
+
+(async()=>{
+  if(!window.claude||!claude.use)return;
+  claude.use("sample").then(s=>{sample=s;if(tab==="conversa")render()});
+  const d=await claude.use("db");if(!d)return;
+  const timer=setTimeout(()=>{},10000);
+  try{
+    const st=await d.doc("estado/main").get();
+    const ds=await d.collection("dias").get();
+    clearTimeout(timer);
+    db=d;mode="db";
+    if(st.exists){S=Object.assign({},S,JSON.parse(JSON.stringify(st.data())))}
+    else{saveState()} // primeira vez: sobe o que estiver no aparelho
+    const remote={};ds.docs.forEach(x=>{const v=x.data();if(v)remote[x.id]=JSON.parse(JSON.stringify(v))});
+    for(const k in DAYS){if(!remote[k]||(remote[k].xp||0)<(DAYS[k].xp||0)){remote[k]=DAYS[k];saveDay(k)}}
+    DAYS=remote;lsSave();
+    if(!lesson&&!(tab==="teste"&&testState&&testState.i>=0)&&!(tab==="conversa"&&chat.length>1))render();
+  }catch(e){clearTimeout(timer);console.warn("db",e)}
+})();
+</script>
