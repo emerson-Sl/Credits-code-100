@@ -63,7 +63,7 @@ p{margin:0}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:.78rem;font-weight:700;background:var(--surface2)}
 /* abas */
 nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);z-index:5}
-nav.tabs .in{display:grid;grid-template-columns:repeat(5,1fr);width:100%;max-width:560px}
+nav.tabs .in{display:grid;grid-template-columns:repeat(6,1fr);width:100%;max-width:560px}
 nav.tabs button{background:none;border:0;padding:9px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.72rem;color:var(--muted);font-weight:700}
 nav.tabs button .d{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-size:.75rem;color:#fff;opacity:.55}
 nav.tabs button[aria-selected="true"]{color:var(--fg)}
@@ -130,7 +130,8 @@ const TABS=[
   {id:"aula",label:"Aula",s:"itsuki"},
   {id:"cartas",label:"Cartas",s:"miku"},
   {id:"conversa",label:"Conversa",s:"yotsuba"},
-  {id:"ouvir",label:"Ônibus",s:"ichika"}
+  {id:"ouvir",label:"Ônibus",s:"ichika"},
+  {id:"escrita",label:"Escrita",s:"nino"}
 ];
 const UNITS=[
   {t:"Apresentações: I am / You are",f:"verbo to be no presente, se apresentar, my/your",s:"itsuki"},
@@ -210,7 +211,7 @@ const TASKS=[
   {id:"cartas",act:"cartas",block:"tarde",s:"miku",tab:"cartas",title:"Cartas da Miku",need:15,unit:"cartas",hint:"vocabulário com áudio"},
   {id:"conversa",act:"conversa",block:"tarde",s:"yotsuba",tab:"conversa",title:"Conversa com a Yotsuba",need:8,unit:"mensagens",hint:"fale pelo 🎤 do teclado"},
   {id:"ditado",act:"onibus",block:"onibus",s:"ichika",tab:"ouvir",mode:"ditado",title:"Ditado da Ichika",need:10,unit:"frases",hint:"ouvir com fone e digitar"},
-  {id:"escrita",act:"escrita",block:"onibus",s:"nino",tab:"ouvir",mode:"escrita",title:"Escrita da Nino",need:6,unit:"frases",hint:"ler em português e escrever em inglês"}
+  {id:"escrita",act:"escrita",block:"onibus",s:"nino",tab:"escrita",title:"Escrita da Nino",need:6,unit:"frases",hint:"ler em português e escrever em inglês"}
 ];
 const BLOCKS={tarde:{name:"Tarde",wk:"14:00–15:30",s:"itsuki"},onibus:{name:"Ônibus",wk:"17:57",s:"ichika"}};
 function taskProg(t,k=dkey()){const a=((DAYS[k]||{}).acts||{})[t.act]||0;return Math.min(a,t.need)}
@@ -254,7 +255,7 @@ function renderTabs(){
 }
 document.addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b){if(b.dataset.mode)busMode=b.dataset.mode;go(b.dataset.tab)}});
 function go(t){tab=t;try{speechSynthesis.cancel()}catch(e){}renderTabs();render();scrollTo(0,0);if(location.hash!=="#"+t)history.replaceState(null,"","#"+t)}
-function render(){({inicio:vHome,aula:vAula,cartas:vCartas,conversa:vConversa,ouvir:vOuvir,teste:vTeste}[tab]||vHome)()}
+function render(){({inicio:vHome,aula:vAula,cartas:vCartas,conversa:vConversa,ouvir:()=>{busMode="ditado";vOuvir()},escrita:()=>{busMode="escrita";vEscrita()},teste:vTeste}[tab]||vHome)()}
 
 function homeMessage(){
   const st=streak(),now=new Date(),m=now.getHours()*60+now.getMinutes(),k=dkey(),we=isWeekend(now);
@@ -472,13 +473,14 @@ async function sendChat(text,isHelp){
 
 /* ---------- ÔNIBUS (escuta + ditado) ---------- */
 let busQ=null,busPos=0,busShown=false,busMode="ditado",busOk=0;
-function segHtml(){const d=TASKS.find(t=>t.id==="ditado"),w=TASKS.find(t=>t.id==="escrita");return `<div class="seg" role="group" aria-label="Atividade do ônibus"><button aria-pressed="${busMode==="ditado"}" data-bm="ditado">🎧 Ditado ${taskProg(d)}/${d.need}</button><button aria-pressed="${busMode==="escrita"}" data-bm="escrita">✍️ Escrita ${taskProg(w)}/${w.need}</button></div>`}
+function segHtml(){return ""}
+function segHtmlOld(){const d=TASKS.find(t=>t.id==="ditado"),w=TASKS.find(t=>t.id==="escrita");return `<div class="seg" role="group" aria-label="Atividade do ônibus"><button aria-pressed="${busMode==="ditado"}" data-bm="ditado">🎧 Ditado ${taskProg(d)}/${d.need}</button><button aria-pressed="${busMode==="escrita"}" data-bm="escrita">✍️ Escrita ${taskProg(w)}/${w.need}</button></div>`}
 function bindSeg(){document.querySelectorAll("[data-bm]").forEach(b=>b.onclick=()=>{busMode=b.dataset.bm;try{speechSynthesis.cancel()}catch(e){}vOuvir()})}
 function vOuvir(){
   if(busMode==="escrita") return vEscrita();
   if(!busQ){busQ=shuffle(PHRASES).slice(0,10);busPos=0;busOk=0;busShown=false}
   if(busPos>=busQ.length){
-    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${segHtml()}${msg("ichika",`<p>Fim do ditado. Você acertou <b>${busOk} de ${busQ.length}</b> frases. Nada mal, tutor. ${taskDone(TASKS.find(t=>t.id==="escrita"))?"":"Agora vai para a <b>Escrita</b> com a Nino."}</p>`)}<button class="btn full" id="again">Mais 10 frases</button></div>`;
+    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${segHtml()}${msg("ichika",`<p>Fim do ditado. Você acertou <b>${busOk} de ${busQ.length}</b> frases. Nada mal, tutor. ${taskDone(TASKS.find(t=>t.id==="escrita"))?"":"Agora vai para a aba <b>Escrita</b> com a Nino."}</p>`)}<button class="btn full" id="again">Mais 10 frases</button></div>`;
     bindSeg();$("#again").onclick=()=>{busQ=null;vOuvir()};return;
   }
   const p=busQ[busPos];
