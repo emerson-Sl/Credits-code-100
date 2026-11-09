@@ -92,6 +92,9 @@ textarea{resize:vertical;min-height:48px}
 .unit.done .n{color:var(--ok)}
 .unit div{min-width:0}
 .tr{color:var(--muted);font-size:.9rem}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:14px;background:var(--surface2)}
+.seg button{border:0;background:none;border-radius:10px;padding:9px 6px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--fg)}
 .fix{border-left:3px solid var(--nino);padding-left:10px;font-size:.9rem}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:99px;font-weight:700;font-size:.88rem;z-index:20;max-width:90vw;text-align:center}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-2px}
@@ -199,7 +202,22 @@ function lsLoad(){try{const v=JSON.parse(localStorage.getItem(LS)||"null");if(v)
 let saveT=null;
 function saveState(){lsSave();if(!db)return;clearTimeout(saveT);saveT=setTimeout(()=>{db.doc("estado/main").set(JSON.parse(JSON.stringify(S))).catch(e=>console.warn(e))},700)}
 const dayT={};
-function saveDay(k){lsSave();if(!db)return;clearTimeout(dayT[k]);dayT[k]=setTimeout(()=>{db.doc("dias/"+k).set(Object.assign({date:k},DAYS[k])).catch(e=>console.warn(e))},700)}
+function saveDay(k){lsSave();if(!db)return;clearTimeout(dayT[k]);dayT[k]=setTimeout(()=>{db.doc("dias/"+k).set(Object.assign({date:k},DAYS[k],daySummary(k))).catch(e=>console.warn(e))},700)}
+
+/* Tarefas do dia: bloco da tarde (14:00–15:30) e bloco do ônibus (17:57, só escutar e escrever) */
+const TASKS=[
+  {id:"aula",act:"aula",block:"tarde",s:"itsuki",tab:"aula",title:"Aula da Itsuki",need:1,unit:"aula",hint:"explicação + 5 exercícios"},
+  {id:"cartas",act:"cartas",block:"tarde",s:"miku",tab:"cartas",title:"Cartas da Miku",need:15,unit:"cartas",hint:"vocabulário com áudio"},
+  {id:"conversa",act:"conversa",block:"tarde",s:"yotsuba",tab:"conversa",title:"Conversa com a Yotsuba",need:8,unit:"mensagens",hint:"fale pelo 🎤 do teclado"},
+  {id:"ditado",act:"onibus",block:"onibus",s:"ichika",tab:"ouvir",mode:"ditado",title:"Ditado da Ichika",need:10,unit:"frases",hint:"ouvir com fone e digitar"},
+  {id:"escrita",act:"escrita",block:"onibus",s:"nino",tab:"ouvir",mode:"escrita",title:"Escrita da Nino",need:6,unit:"frases",hint:"ler em português e escrever em inglês"}
+];
+const BLOCKS={tarde:{name:"Tarde",wk:"14:00–15:30",s:"itsuki"},onibus:{name:"Ônibus",wk:"17:57",s:"ichika"}};
+function taskProg(t,k=dkey()){const a=((DAYS[k]||{}).acts||{})[t.act]||0;return Math.min(a,t.need)}
+const taskDone=(t,k)=>taskProg(t,k)>=t.need;
+const blockDone=(b,k)=>TASKS.filter(t=>t.block===b).every(t=>taskDone(t,k));
+function daySummary(k){return {tarde:blockDone("tarde",k),onibus:blockDone("onibus",k),feitas:TASKS.filter(t=>taskDone(t,k)).length,total:TASKS.length}}
+const isWeekend=(d=new Date())=>d.getDay()===0||d.getDay()===6;
 
 function gain(xp,act){
   const k=dkey();const d=DAYS[k]||(DAYS[k]={xp:0,min:0,acts:{}});
@@ -234,40 +252,47 @@ const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random(
 function renderTabs(){
   $("#tabs").innerHTML=TABS.map(t=>`<button role="tab" id="tab-${t.id}" aria-selected="${t.id===tab}" data-tab="${t.id}"><span class="d" style="background:${SIS[t.s].c}${photoCss(t.s)}">${ph(t.s)?"":SIS[t.s].name[0]}</span>${t.label}</button>`).join("");
 }
-document.addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b){go(b.dataset.tab)}});
+document.addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b){if(b.dataset.mode)busMode=b.dataset.mode;go(b.dataset.tab)}});
 function go(t){tab=t;try{speechSynthesis.cancel()}catch(e){}renderTabs();render();scrollTo(0,0);if(location.hash!=="#"+t)history.replaceState(null,"","#"+t)}
 function render(){({inicio:vHome,aula:vAula,cartas:vCartas,conversa:vConversa,ouvir:vOuvir,teste:vTeste}[tab]||vHome)()}
 
 function homeMessage(){
-  const x=todayXP(),st=streak(),h=new Date().getHours();
+  const st=streak(),now=new Date(),m=now.getHours()*60+now.getMinutes(),k=dkey(),we=isWeekend(now);
+  const sm=daySummary(k),tarde=sm.tarde,onibus=sm.onibus;
   if(!S.tests.length) return ["itsuki","Antes de começar, faça o <b>teste de nível</b>. São 15 perguntas, uns 8 minutos. Assim eu sei por onde começar com você."];
-  if(x>=GOAL_XP) return ["yotsuba",`Meta de hoje batida! ${st>1?`Já são <b>${st} dias seguidos</b>!`:""} Você está cada vez mais perto de jogar a sua rota. 🍀`];
-  if(x>0) return ["miku",`Você já fez ${x} de ${GOAL_XP} XP hoje… só mais um pouco. Eu espero você.`];
-  if(h>=19) return ["nino","Ei! Já são "+h+"h e você <b>não estudou nada hoje</b>. Não pense que eu esqueci. Abre uma aula agora, nem que sejam 10 minutos!"];
-  if(h>=15) return ["nino","Agora é seu horário livre, né? Então nada de enrolar. A Yotsuba está esperando na <b>Conversa</b>."];
-  return ["ichika","Bom dia. Hoje à tarde tem conversa com a Yotsuba e no ônibus eu treino escuta com você. Combinado?"];
+  if(tarde&&onibus) return ["yotsuba",`Todas as tarefas de hoje feitas! ${st>1?`Já são <b>${st} dias seguidos</b>!`:""} Você está cada vez mais perto de jogar a sua rota. 🍀`];
+  if(m>=21*60) return ["nino",`Ei! Já são ${now.getHours()}h e faltam <b>${sm.total-sm.feitas} tarefas</b>. Não é como se eu me importasse… mas termina agora!`];
+  if(we){
+    if(!tarde) return ["itsuki","Fim de semana não tem horário fixo, mas as tarefas continuam. Comece pelo <b>bloco da tarde</b>: aula, cartas e conversa."];
+    return ["ichika","Bloco da tarde feito. Agora só falta escutar e escrever comigo e com a Nino. Pode ser a qualquer hora."];
+  }
+  if(m>=17*60+57&&!onibus) return ["ichika","Hora do ônibus, tutor. Fone no ouvido: <b>ditado</b> comigo e depois <b>escrita</b> com a Nino."];
+  if(m>=14*60&&m<15*60+30&&!tarde) return ["itsuki","Está no horário de estudo (14:00–15:30). Faça as tarefas da tarde em ordem: <b>aula</b>, <b>cartas</b> e <b>conversa</b>."];
+  if(m>=15*60+30&&!tarde) return ["nino","O horário da tarde passou e ainda tem tarefa aberta. Termina antes do ônibus, hein!"];
+  if(tarde) return ["miku","A tarde está feita… às 17:57 a Ichika te espera no ônibus."];
+  return ["ichika","Hoje às 14:00 começa o estudo da tarde, e às 17:57 tem escuta e escrita no ônibus. Combinado?"];
 }
+function taskRow(t){const p=taskProg(t),ok=p>=t.need;return `<button class="slot" data-tab="${t.tab}"${t.mode?` data-mode="${t.mode}"`:""}><span class="stripe" style="background:${SIS[t.s].c}"></span><div style="flex:1"><b>${t.title}</b><div class="small muted">${t.hint}</div></div><span class="chip" style="${ok?"background:var(--ok);color:#fff":""}">${ok?"✓ feito":`${p}/${t.need}`}</span></button>`}
+function blockHtml(b,we){const B=BLOCKS[b],done=blockDone(b);return `<div style="display:flex;flex-direction:column;gap:8px"><div class="row" style="justify-content:space-between"><h3>${B.name}${we?"":` · <span style="font-variant-numeric:tabular-nums">${B.wk}</span>`}</h3>${done?`<span class="small" style="color:var(--ok);font-weight:700">bloco concluído</span>`:""}</div>${TASKS.filter(t=>t.block===b).map(taskRow).join("")}</div>`}
 function vHome(){
-  const [who,text]=homeMessage(),x=todayXP(),st=streak(),nt=nextTest(),dd=diffDays(dkey(),nt);
-  const due=dueCards().length;
-  const unit=Math.min(Object.keys(S.done).length,UNITS.length-1);
+  const [who,text]=homeMessage(),st=streak(),nt=nextTest(),dd=diffDays(dkey(),nt);
+  const sm=daySummary(dkey()),we=isWeekend();
   $("#view").innerHTML=`
   <div style="display:flex;flex-direction:column;gap:16px">
     ${msg(who,`<p>${text}</p>`)}
     <section class="panel" aria-label="Progresso">
       <div class="stats">
         <div class="stat"><span class="eyebrow">Sequência</span><b>${st}</b><span class="small muted">${st===1?"dia":"dias"}</span></div>
-        <div class="stat"><span class="eyebrow">Hoje</span><b>${x}</b><span class="small muted">de ${GOAL_XP} XP</span></div>
+        <div class="stat"><span class="eyebrow">Tarefas</span><b>${sm.feitas}/${sm.total}</b><span class="small muted">hoje</span></div>
         <div class="stat"><span class="eyebrow">Total</span><b>${S.xp}</b><span class="small muted">XP</span></div>
       </div>
-      <div class="bar" aria-hidden="true"><span style="width:${Math.min(100,x/GOAL_XP*100)}%"></span></div>
+      <div class="bar" aria-hidden="true"><span style="width:${sm.feitas/sm.total*100}%"></span></div>
     </section>
     <section class="panel">
-      <div class="row" style="justify-content:space-between"><h2>Seu dia</h2><span class="chip">${Object.keys(S.done).length}/${UNITS.length} aulas</span></div>
-      <button class="slot" data-tab="aula"><span class="stripe" style="background:var(--itsuki)"></span><span class="time">15:15</span><div><b>Aula da Itsuki</b><div class="small muted">${esc(UNITS[unit].t)} · ~10 min</div></div></button>
-      <button class="slot" data-tab="conversa"><span class="stripe" style="background:var(--yotsuba)"></span><span class="time">15:30</span><div><b>Conversa com a Yotsuba</b><div class="small muted">Escreva ou dite em voz alta pelo microfone do teclado · ~15 min</div></div></button>
-      <button class="slot" data-tab="cartas"><span class="stripe" style="background:var(--miku)"></span><span class="time">16:00</span><div><b>Cartas da Miku</b><div class="small muted">${due} cartas para revisar · ~5 min</div></div></button>
-      <button class="slot" data-tab="ouvir"><span class="stripe" style="background:var(--ichika)"></span><span class="time">18:00</span><div><b>Ônibus com a Ichika</b><div class="small muted">Escutar e digitar frases, sem falar · ~15 min</div></div></button>
+      <div class="row" style="justify-content:space-between"><h2>Tarefas de hoje</h2><span class="chip">${we?"Fim de semana · livre":"Seg a sex"}</span></div>
+      ${blockHtml("tarde",we)}
+      ${blockHtml("onibus",we)}
+      <p class="small muted">Lembretes: ${we?"12:31 · 14:01 · 16:01 · 18:01 · 21:01 (cobrança)":"13:55 · 14:01 · 17:57 · 21:01 (cobrança)"}</p>
     </section>
     <section class="panel">
       <div class="row" style="justify-content:space-between"><h2>Teste de nível</h2><span class="chip">${S.tests.length?esc(S.tests[S.tests.length-1].level):"sem nota"}</span></div>
@@ -447,14 +472,18 @@ async function sendChat(text,isHelp){
 
 /* ---------- ÔNIBUS (escuta + ditado) ---------- */
 let busQ=null,busPos=0,busShown=false,busMode="ditado",busOk=0;
+function segHtml(){const d=TASKS.find(t=>t.id==="ditado"),w=TASKS.find(t=>t.id==="escrita");return `<div class="seg" role="group" aria-label="Atividade do ônibus"><button aria-pressed="${busMode==="ditado"}" data-bm="ditado">🎧 Ditado ${taskProg(d)}/${d.need}</button><button aria-pressed="${busMode==="escrita"}" data-bm="escrita">✍️ Escrita ${taskProg(w)}/${w.need}</button></div>`}
+function bindSeg(){document.querySelectorAll("[data-bm]").forEach(b=>b.onclick=()=>{busMode=b.dataset.bm;try{speechSynthesis.cancel()}catch(e){}vOuvir()})}
 function vOuvir(){
+  if(busMode==="escrita") return vEscrita();
   if(!busQ){busQ=shuffle(PHRASES).slice(0,10);busPos=0;busOk=0;busShown=false}
   if(busPos>=busQ.length){
-    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${msg("ichika",`<p>Fim da viagem. Você acertou <b>${busOk} de ${busQ.length}</b> frases. Nada mal, tutor.</p>`)}<button class="btn full" id="again">Mais 10 frases</button></div>`;
-    $("#again").onclick=()=>{busQ=null;vOuvir()};return;
+    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${segHtml()}${msg("ichika",`<p>Fim do ditado. Você acertou <b>${busOk} de ${busQ.length}</b> frases. Nada mal, tutor. ${taskDone(TASKS.find(t=>t.id==="escrita"))?"":"Agora vai para a <b>Escrita</b> com a Nino."}</p>`)}<button class="btn full" id="again">Mais 10 frases</button></div>`;
+    bindSeg();$("#again").onclick=()=>{busQ=null;vOuvir()};return;
   }
   const p=busQ[busPos];
   $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    ${segHtml()}
     ${busPos===0&&!busShown?msg("ichika","<p>Modo ônibus: põe o fone, escuta a frase e digita o que ouviu. Pode repetir quantas vezes quiser, inclusive bem devagar.</p>"):""}
     <div class="row" style="justify-content:space-between"><span class="eyebrow">Frase ${busPos+1} de ${busQ.length}</span><span class="chip">${busOk} acertos</span></div>
     <div class="row"><button class="btn" id="p1">🔊 Ouvir</button><button class="btn ghost" id="p2">🐢 Devagar</button></div>
@@ -464,7 +493,7 @@ function vOuvir(){
       ${busShown?"":`<div class="row"><button class="btn" id="chk">Conferir</button><button class="btn line" id="show">Mostrar</button></div>`}
       <div id="bfb"></div>
     </section></div>`;
-  $("#p1").onclick=()=>speak(p.en,0.9);$("#p2").onclick=()=>speak(p.en,0.6);
+  bindSeg();$("#p1").onclick=()=>speak(p.en,0.9);$("#p2").onclick=()=>speak(p.en,0.6);
   const inp=$("#dict");
   const finish=(ok,typed)=>{busShown=true;if(ok){busOk++;gain(5,"onibus")}else gain(1,"onibus");
     const ws=norm(p.en).split(" "),ts=new Set(norm(typed||"").split(" "));
@@ -472,6 +501,43 @@ function vOuvir(){
     inp.disabled=true;$("#bn").onclick=()=>{busPos++;busShown=false;vOuvir()};document.querySelectorAll("#chk,#show").forEach(b=>b.remove())};
   if(!busShown){$("#chk").onclick=()=>finish(norm(inp.value)===norm(p.en),inp.value);$("#show").onclick=()=>finish(false,inp.value);
     inp.addEventListener("keydown",e=>{if(e.key==="Enter")finish(norm(inp.value)===norm(p.en),inp.value)});}
+}
+
+/* ---------- ESCRITA (português → inglês) ---------- */
+let wrQ=null,wrPos=0,wrOk=0,wrRes=null,wrBusy=false;
+function vEscrita(){
+  if(!wrQ){wrQ=shuffle(PHRASES).slice(0,6);wrPos=0;wrOk=0;wrRes=null}
+  if(wrPos>=wrQ.length){
+    $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${segHtml()}${msg("nino",`<p>Hmph. <b>${wrOk} de ${wrQ.length}</b> certas. ${wrOk>=5?"Tá, até que foi bem.":"Amanhã eu quero mais acertos!"}</p>`)}<button class="btn full" id="again">Mais 6 frases</button></div>`;
+    bindSeg();$("#again").onclick=()=>{wrQ=null;vEscrita()};return;
+  }
+  const p=wrQ[wrPos];
+  $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    ${segHtml()}
+    ${wrPos===0&&!wrRes?msg("nino","<p>Eu mostro a frase em português e você escreve em inglês. Não precisa ser igual palavra por palavra, só precisa estar certo. E nada de tradutor!</p>"):""}
+    <div class="row" style="justify-content:space-between"><span class="eyebrow">Frase ${wrPos+1} de ${wrQ.length}</span><span class="chip">${wrOk} certas</span></div>
+    <section class="panel">
+      <h3>${esc(p.pt)}</h3>
+      <label for="wr" class="small muted">Escreva em inglês</label>
+      <input type="text" id="wr" autocomplete="off" autocapitalize="sentences" spellcheck="false" ${wrRes||wrBusy?"disabled":""}>
+      ${wrRes?"":`<div class="row"><button class="btn" id="wchk" ${wrBusy?"disabled":""}>${wrBusy?'<span class="spin"></span> Conferindo':"Conferir"}</button><button class="btn line" id="wshow" ${wrBusy?"disabled":""}>Não sei</button></div>`}
+      ${wrRes?`<div class="feedback"><b style="color:${wrRes.ok?"var(--ok)":"var(--bad)"}">${wrRes.ok?"Certo!":"Ainda não."}</b>${wrRes.fix?` ${esc(wrRes.fix)}`:""}<p style="margin-top:4px">Uma forma de dizer: <b>${esc(p.en)}</b></p></div><div class="row"><button class="btn ghost" id="wsay">🔊 Ouvir</button><button class="btn" id="wnext" style="flex:1">Próxima</button></div>`:""}
+    </section></div>`;
+  bindSeg();
+  const inp=$("#wr");
+  if(wrRes){inp.value=wrRes.typed||"";$("#wsay").onclick=()=>speak(p.en);$("#wnext").onclick=()=>{wrPos++;wrRes=null;vEscrita()};return}
+  const done=r=>{wrBusy=false;wrRes=r;if(r.ok)wrOk++;gain(r.ok?4:1,"escrita");vEscrita()};
+  const check=async()=>{
+    const typed=inp.value.trim();if(!typed||wrBusy)return;
+    if(norm(typed)===norm(p.en))return done({ok:true,fix:"",typed});
+    if(!sample)return done({ok:false,fix:"",typed});
+    wrBusy=true;vEscrita();$("#wr").value=typed;
+    try{const r=await sample.json(`Um aluno brasileiro iniciante traduziu uma frase para o inglês. Frase em português: "${p.pt}". Tradução de referência: "${p.en}". Resposta do aluno: "${typed}". Considere correta se o sentido e a gramática estiverem certos, mesmo com outras palavras; ignore maiúsculas, acentos e pontuação. Responda SOMENTE com JSON: {"ok":boolean,"fix":string (em português, curto e gentil: o que errou e a frase do aluno corrigida; vazio se estiver correta)}`,{modelTier:"quick",cache:false});
+      done({ok:!!r.ok,fix:String(r.fix||""),typed})}
+    catch(e){done({ok:false,fix:"Não consegui conferir agora. Compare com a frase abaixo.",typed})}
+  };
+  $("#wchk").onclick=check;$("#wshow").onclick=()=>done({ok:false,fix:"",typed:inp.value});
+  inp.addEventListener("keydown",e=>{if(e.key==="Enter")check()});
 }
 
 /* ---------- TESTE ---------- */
