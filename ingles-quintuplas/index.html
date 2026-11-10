@@ -374,16 +374,21 @@ function vAula(){
     ${msg("itsuki",`<p>Cada aula tem uma explicação curta em português, exemplos com áudio e 5 exercícios. Se acertar 4 ou mais, a aula conta como concluída.</p>`)}
     <section class="panel"><h2>Trilha A1 → A2</h2><div class="units">
     ${UNITS.map((u,i)=>`<button class="unit ${S.done[i]?"done":""}" data-unit="${i}"><span class="n">${S.done[i]?"✓":i+1}</span><div><b>${esc(u.t)}</b><div class="small muted">com ${SIS[u.s].name}${i===next?" · próxima":""}</div></div></button>`).join("")}
-    </div></section></div>`;
+    </div></section>
+    <section class="panel"><div class="row" style="justify-content:space-between"><h2>Aulas das suas dúvidas</h2><span class="chip">${(S.extra||[]).filter(x=>!x.done).length} novas</span></div>
+    ${(S.extra||[]).length?`<div class="units">${S.extra.slice().reverse().map(x=>`<div class="row" style="flex-wrap:nowrap"><button class="unit ${x.done?"done":""}" data-xunit="${esc(x.id)}" style="flex:1"><span class="n">${x.done?"✓":"★"}</span><div><b>${esc(x.t)}</b><div class="small muted">com ${SIS[x.s].name} · da sua dúvida "${esc(x.q.slice(0,50))}${x.q.length>50?"…":""}"</div></div></button><button class="btn line" style="padding:6px 10px" data-xdel="${esc(x.id)}" aria-label="Remover">✕</button></div>`).join("")}</div>`:`<p class="small muted">Quando você perguntar algo na aba Dúvidas que dá uma aula inteira (tipo "como falar as horas"), a Itsuki cria uma aula extra aqui, com a irmã que combina com o assunto.</p>`}
+    </section></div>`;
   document.querySelectorAll("[data-unit]").forEach(b=>b.onclick=()=>startLesson(+b.dataset.unit));
+  document.querySelectorAll("[data-xunit]").forEach(b=>b.onclick=()=>startLesson(b.dataset.xunit));
+  document.querySelectorAll("[data-xdel]").forEach(b=>b.onclick=()=>{S.extra=(S.extra||[]).filter(x=>x.id!==b.dataset.xdel);saveState();vAula()});
 }
 async function startLesson(i){
-  lessonIdx=i;lessonPos=-1;lessonScore=0;const u=UNITS[i];
+  lessonIdx=i;lessonPos=-1;lessonScore=0;const isX=typeof i==="string";const u=isX?(S.extra||[]).find(x=>x.id===i):UNITS[i];if(!u){lesson=null;return vAula()}
   $("#view").innerHTML=`<div class="panel">${msg(u.s,`<p><span class="spin"></span> Preparando a aula “${esc(u.t)}”…</p>`)}</div>`;
   if(!sample){ if(i===0){lesson=LESSON1;return vLesson()} $("#view").innerHTML=`<div class="panel">${msg("itsuki","<p>As aulas novas são montadas pela IA, que não está disponível agora. A Aula 1 funciona sem ela. Abra pelo app do Claude, logado na sua conta.</p>")}<button class="btn ghost" id="back">Voltar</button></div>`;$("#back").onclick=()=>{lesson=null;vAula()};return}
   const lvl=S.tests.length?S.tests[S.tests.length-1].level:"iniciante (lê um pouco, entende pouco ouvindo, fala pouco)";
   const prompt=`Você é ${SIS[u.s].name}, uma das quíntuplas Nakano, dando aula de inglês para um aluno brasileiro adolescente. Personalidade: ${SIS[u.s].vibe}. Nível do aluno: ${lvl}. Ele quer jogar uma visual novel do anime em inglês.
-Monte a aula "${u.t}" com foco em: ${u.f}.
+Monte a aula "${u.t}" com foco em: ${u.f}.${isX?` Essa aula nasceu de uma dúvida do aluno: "${u.q}". Responda bem essa dúvida dentro da aula.`:""}
 Responda SOMENTE com JSON neste formato:
 {"title":string,"intro":string (explicação em português, 3 a 5 frases simples, no jeito de falar da personagem),"examples":[{"en":string,"pt":string}] (4 a 5 exemplos curtos com cenas de escola, irmãs, provas, festivais),"exercises":[{"q":string,"options":[string,string,string],"answer":número 0-2,"explain":string em português curto}] (exatamente 5, variando: completar, tradução, escolher a frase correta)}`;
   try{
@@ -402,7 +407,7 @@ function vLesson(){
   const L=lesson,t=L.teacher||"itsuki";
   if(lessonPos===-1){
     $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
-      <div class="row"><button class="btn line" id="back">← Trilha</button><span class="eyebrow">Aula ${lessonIdx+1}</span></div>
+      <div class="row"><button class="btn line" id="back">← Trilha</button><span class="eyebrow">${typeof lessonIdx==="string"?"Aula extra":"Aula "+(lessonIdx+1)}</span></div>
       <h2>${esc(L.title)}</h2>
       ${msg(t,`<p>${esc(L.intro)}</p>`)}
       <section class="panel"><h3>Exemplos</h3>
@@ -414,7 +419,8 @@ function vLesson(){
   }
   if(lessonPos>=L.exercises.length){
     const pass=lessonScore>=Math.ceil(L.exercises.length*0.8);
-    if(pass&&!S.done[lessonIdx]){S.done[lessonIdx]=dkey();gain(30,"aula")}else gain(10,"aula");
+    if(typeof lessonIdx==="string"){const x=(S.extra||[]).find(e=>e.id===lessonIdx);const first=pass&&x&&!x.done;if(first)x.done=dkey();gain(first?30:10,"aula",x?x.s:"itsuki")}
+    else if(pass&&!S.done[lessonIdx]){S.done[lessonIdx]=dkey();gain(30,"aula")}else gain(10,"aula");
     $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">${msg(pass?"yotsuba":"nino",`<p>${pass?`Você acertou <b>${lessonScore} de ${L.exercises.length}</b>! Aula concluída. +30 XP`:`Você acertou ${lessonScore} de ${L.exercises.length}. Hmph, dá pra melhorar. Refaça amanhã e vai passar. +10 XP`}</p>`)}<button class="btn full" id="fin">Voltar para a trilha</button></div>`;
     $("#fin").onclick=()=>{lesson=null;vAula()};return;
   }
@@ -621,7 +627,7 @@ function vDuvidas(){
   const items=S.qa.slice(-15);
   $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">
     ${msg("itsuki","<p>Pode perguntar qualquer coisa: o que uma palavra significa, por que uma frase é assim, a diferença entre duas palavras, como se fala algo em inglês… Eu explico com calma, em português.</p>")}
-    ${items.map((q,i)=>`<div class="msg me"><div class="bubble"><p>${esc(q.q)}</p></div></div>${q.pending?msg("itsuki",'<p><span class="spin"></span> Pensando…</p>'):msg("itsuki",`<p>${fmt(q.a)}</p>${(q.ex||[]).map((x,j)=>`<button class="opt" data-qx="${S.qa.length-items.length+i}:${j}" style="padding:8px 11px"><b>🔊 ${esc(x.en)}</b><div class="tr">${esc(x.pt)}</div></button>`).join("")}${q.card&&q.card.en?`<div class="row">${q.saved?`<span class="small" style="color:var(--ok)">✓ "${esc(q.card.en)}" está nas cartas da Miku</span>`:`<button class="btn line" style="padding:6px 12px;font-size:.85rem" data-qs="${S.qa.length-items.length+i}">+ Salvar "${esc(q.card.en)}" nas cartas</button>`}</div>`:""}`)}`).join("")}
+    ${items.map((q,i)=>`<div class="msg me"><div class="bubble"><p>${esc(q.q)}</p></div></div>${q.pending?msg("itsuki",'<p><span class="spin"></span> Pensando…</p>'):msg("itsuki",`<p>${fmt(q.a)}</p>${(q.ex||[]).map((x,j)=>`<button class="opt" data-qx="${S.qa.length-items.length+i}:${j}" style="padding:8px 11px"><b>🔊 ${esc(x.en)}</b><div class="tr">${esc(x.pt)}</div></button>`).join("")}${q.lesson?`<button class="slot" data-tab="aula" style="margin-top:4px"><span class="stripe" style="background:${SIS[q.lesson.s].c}"></span><div style="flex:1"><b>📚 Virou aula extra: ${esc(q.lesson.t)}</b><div class="small muted">com a ${SIS[q.lesson.s].name} · está na aba Aula</div></div></button>`:""}${q.card&&q.card.en?`<div class="row">${q.saved?`<span class="small" style="color:var(--ok)">✓ "${esc(q.card.en)}" está nas cartas da Miku</span>`:`<button class="btn line" style="padding:6px 12px;font-size:.85rem" data-qs="${S.qa.length-items.length+i}">+ Salvar "${esc(q.card.en)}" nas cartas</button>`}</div>`:""}`)}`).join("")}
     ${!sample?`<div class="panel"><p class="small muted">As dúvidas usam a IA e precisam do app aberto logado na sua conta do Claude.</p></div>`:""}
     ${!items.length&&sample?`<div class="pick" style="flex-wrap:wrap">${QA_CHIPS.map(c=>`<button data-qc="${esc(c)}" style="padding:6px 12px">${esc(c)}</button>`).join("")}</div>`:""}
     <div class="panel" style="padding:12px">
@@ -645,8 +651,9 @@ async function ask(text){
   try{
     const r=await sample.json(`Você é Itsuki Nakano, de The Quintessential Quintuplets: séria, estudiosa, paciente e gentil, adora comida. Você é professora de inglês de um aluno brasileiro de nível ${lvl}. Responda a dúvida dele em português, de forma clara e curta (3 a 7 frases), explicando o significado e o PORQUÊ (regra, origem ou uso). Se for sobre uma palavra ou expressão, dê a tradução, quando usar e cuidados comuns de brasileiros. Pode usar **negrito** para destacar. Se a dúvida não for sobre inglês, responda gentilmente e puxe de volta para o estudo.
 ${hist?`Conversa anterior (contexto):\n${hist}\n\n`:""}Dúvida do aluno: ${text}
-Responda SOMENTE com JSON: {"answer":string,"examples":[{"en":string,"pt":string}] (2 ou 3 frases simples de exemplo, podendo usar as quíntuplas),"card":{"en":string,"pt":string,"ex":string} ou null (a palavra/expressão principal da dúvida, em minúsculas, para virar flashcard; null se a dúvida não for sobre uma palavra)}`,{modelTier:"default",cache:false});
+Responda SOMENTE com JSON: {"answer":string,"examples":[{"en":string,"pt":string}] (2 ou 3 frases simples de exemplo, podendo usar as quíntuplas),"card":{"en":string,"pt":string,"ex":string} ou null (a palavra/expressão principal da dúvida, em minúsculas, para virar flashcard; null se a dúvida não for sobre uma palavra),"lesson":{"title":string (título curto da aula em português),"focus":string (o que a aula deve ensinar),"sister":"ichika"|"nino"|"miku"|"yotsuba"|"itsuki" (a irmã que mais combina com o assunto: Ichika atuação/sentimentos/escuta, Nino culinária/moda/vocabulário, Miku história/leitura/números, Yotsuba esportes/conversa/dia a dia, Itsuki gramática/estudo/comida)} ou null (só quando a dúvida é um tema que rende uma aula inteira, como falar as horas, dias da semana, pedir comida, preposições, um tempo verbal; null para dúvidas simples de uma palavra ou já ensinadas na trilha: ${UNITS.map(u=>u.t).join("; ")})}`,{modelTier:"default",cache:false});
     item.a=String(r.answer||"…");item.ex=Array.isArray(r.examples)?r.examples.slice(0,3).map(x=>({en:String(x.en||""),pt:String(x.pt||"")})):[];item.card=r.card&&r.card.en?{en:String(r.card.en),pt:String(r.card.pt||""),ex:String(r.card.ex||"")}:null;
+    if(r.lesson&&r.lesson.title){S.extra=S.extra||[];const t=String(r.lesson.title).slice(0,80);if(!S.extra.some(x=>x.t.toLowerCase()===t.toLowerCase())){const sk=SIS[String(r.lesson.sister||"").toLowerCase()]?String(r.lesson.sister).toLowerCase():"itsuki";S.extra.push({id:"x"+Date.now().toString(36),t,f:String(r.lesson.focus||t).slice(0,300),s:sk,q:text.slice(0,200),date:dkey(),done:null});if(S.extra.length>30)S.extra=S.extra.slice(-30);item.lesson={t,s:sk}}}
     gain(2,"duvida");
   }catch(e){item.a=e&&e.code==="rate_limited"?"Muitas perguntas seguidas. Espere um pouquinho e pergunte de novo.":"Não consegui responder agora. Tente perguntar de novo.";item.ex=[];item.failed=true}
   delete item.pending;qaBusy=false;if(S.qa.length>40)S.qa=S.qa.slice(-40);saveState();if(tab==="duvidas")vDuvidas();
