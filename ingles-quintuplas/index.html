@@ -470,52 +470,75 @@ function vCartas(){
     });}
 }
 
-/* ---------- CONVERSA ---------- */
-let chatWho="yotsuba",chat=[],chatBusy=false;
+/* ---------- CONVERSA (com histórico e memória separada por irmã) ---------- */
+let chatWho="yotsuba",chat=[],chatBusy=false,memOpen=false;
+const HELP_MARK="🤔 Não sei responder",HELP_TXT="(Não sei como responder. Me dê uma resposta modelo simples para eu copiar e explique.)";
 const OPEN={yotsuba:"Hi! I'm Yotsuba! How are you today?",nino:"Hmph. You're late. What did you do today?",miku:"Hi… do you like history? …What do you like?",itsuki:"Good afternoon. Did you eat lunch? What did you eat?",ichika:"Hey, little tutor. Tell me about your day."};
+const OPEN_BACK={yotsuba:"Hi again! I missed you! How was your day?",nino:"Oh, you're back. Hmph. So… what happened today?",miku:"…Welcome back. I was waiting. How are you?",itsuki:"Welcome back. Did you study today? And did you eat well?",ichika:"Hey, you came back~ Tell me, what's new?"};
+function loadChat(){ensureS();S.chats=S.chats||{};S.mem=S.mem||{};if(!Array.isArray(S.chats[chatWho]))S.chats[chatWho]=[];chat=S.chats[chatWho];
+  if(!chat.length){chat.push({role:"assistant",reply:(S.mem[chatWho]||[]).length?OPEN_BACK[chatWho]:OPEN[chatWho],translation:"",correction:"",date:dkey()})}}
+function saveChat(){S.chats[chatWho]=chat.slice(-40);chat=S.chats[chatWho];saveState()}
+function memList(){S.mem=S.mem||{};return S.mem[chatWho]||(S.mem[chatWho]=[])}
 function vConversa(){
   if(convMode==="fala")return vFala();
-  if(!chat.length) chat=[{role:"assistant",reply:OPEN[chatWho],translation:"",correction:""}];
+  loadChat();const mem=memList();
+  const shown=chat.slice(-30);let lastDate=null;
+  const html=shown.map(m=>{let sep="";if(m.date&&m.date!==lastDate){lastDate=m.date;sep=`<p class="small muted" style="text-align:center">${m.date===dkey()?"Hoje":m.date.split("-").reverse().slice(0,2).join("/")}</p>`}return sep+chatHtml(m)}).join("");
   $("#view").innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">
     ${convSeg()}
     <div class="pick" role="group" aria-label="Com quem conversar">${Object.keys(SIS).map(k=>`<button aria-pressed="${k===chatWho}" data-who="${k}">${ava(k)}${SIS[k].name}</button>`).join("")}</div>
-    <div class="chat" id="chat">${chat.map(chatHtml).join("")}</div>
+    <button class="slot" id="memBtn"><span class="stripe" style="background:${SIS[chatWho].c}"></span><div style="flex:1"><b>🧠 O que a ${SIS[chatWho].name} lembra de você</b><div class="small muted">${mem.length?`${mem.length} ${mem.length===1?"lembrança":"lembranças"} · toque para ${memOpen?"fechar":"ver ou apagar"}`:"nada ainda. Conte coisas sobre você na conversa!"}</div></div></button>
+    ${memOpen?`<section class="panel">${mem.length?mem.map((f,i)=>`<div class="row"><span style="flex:1;min-width:0">• ${esc(f)}</span><button class="btn line" style="padding:3px 10px" data-mdel="${i}" aria-label="Apagar">✕</button></div>`).join("")+`<button class="btn line" id="memAll">Apagar tudo que a ${SIS[chatWho].name} lembra</button>`:`<p class="small muted">A ${SIS[chatWho].name} ainda não sabe nada sobre você. Quando você contar algo (seu nome, do que gosta, sua rotina), ela anota aqui e usa nas próximas conversas. Só ela lembra: as outras irmãs têm a memória delas.</p>`}</section>`:""}
+    <div class="chat" id="chat">${html}${chatBusy?msg(chatWho,`<p><span class="spin"></span> digitando…</p>`):""}</div>
     ${!sample?`<div class="panel"><p class="small muted">A conversa usa a IA e precisa ser aberta no app do Claude, com a sua conta. As outras abas funcionam normalmente.</p></div>`:""}
     <div class="panel" style="padding:12px">
       <label class="small muted" for="say">Responda em inglês. Para treinar a fala, toque no 🎤 do teclado do celular e fale.</label>
       <textarea id="say" rows="2" placeholder="I'm fine, thank you…" ${!sample||chatBusy?"disabled":""}></textarea>
-      <div class="row"><button class="btn" id="send" ${!sample||chatBusy?"disabled":""}>Enviar</button><button class="btn ghost" id="help" ${!sample||chatBusy?"disabled":""}>Não sei responder</button><button class="btn line" id="reset">Recomeçar</button></div>
+      <div class="row"><button class="btn" id="send" ${!sample||chatBusy?"disabled":""}>Enviar</button><button class="btn ghost" id="help" ${!sample||chatBusy?"disabled":""}>Não sei responder</button><button class="btn line" id="reset" ${chatBusy?"disabled":""}>Nova conversa</button></div>
+      <p class="small muted">"Nova conversa" limpa as mensagens da tela, mas a ${SIS[chatWho].name} continua lembrando de você.</p>
     </div></div>`;
-  document.querySelectorAll("[data-who]").forEach(b=>b.onclick=()=>{chatWho=b.dataset.who;chat=[];vConversa()});
-  bindConvSeg();$("#reset").onclick=()=>{chat=[];vConversa()};
+  document.querySelectorAll("[data-who]").forEach(b=>b.onclick=()=>{if(chatBusy)return;chatWho=b.dataset.who;memOpen=false;vConversa()});
+  bindConvSeg();
+  $("#memBtn").onclick=()=>{memOpen=!memOpen;vConversa()};
+  document.querySelectorAll("[data-mdel]").forEach(b=>b.onclick=()=>{memList().splice(+b.dataset.mdel,1);saveState();vConversa()});
+  if($("#memAll"))$("#memAll").onclick=()=>{S.mem[chatWho]=[];saveState();vConversa()};
+  $("#reset").onclick=()=>{S.chats[chatWho]=[];chat=[];saveState();vConversa()};
   const ta=$("#say");
   $("#send").onclick=()=>sendChat(ta.value.trim());
-  $("#help").onclick=()=>sendChat("(Não sei como responder. Me dê uma resposta modelo simples para eu copiar e explique.)",true);
+  $("#help").onclick=()=>sendChat(HELP_TXT,true);
   ta.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendChat(ta.value.trim())}});
   document.querySelectorAll("[data-speak]").forEach(b=>b.onclick=()=>speak(b.dataset.speak));
-  const last=$("#chat").lastElementChild;if(last&&chat.length>1)last.scrollIntoView({block:"nearest"});
+  const last=$("#chat").lastElementChild;if(last&&chat.length>1&&!memOpen)last.scrollIntoView({block:"nearest"});
 }
 function chatHtml(m){
   if(m.role==="user") return `<div class="msg me"><div class="bubble"><p>${esc(m.text)}</p></div></div>`;
-  if(m.pending) return msg(chatWho,`<p><span class="spin"></span> digitando…</p>`);
-  return msg(chatWho,`<p>${esc(m.reply)}</p>${m.translation?`<p class="tr">${esc(m.translation)}</p>`:""}${m.correction?`<p class="fix">✏️ ${esc(m.correction)}</p>`:""}${m.model?`<p class="fix" style="border-color:var(--yotsuba)">💬 Você pode dizer: <b>${esc(m.model)}</b></p>`:""}<div class="row"><button class="btn line" style="padding:4px 10px;font-size:.8rem" data-speak="${esc(m.reply)}">🔊 Ouvir</button></div>`);
+  return msg(chatWho,`<p>${esc(m.reply)}</p>${m.translation?`<p class="tr">${esc(m.translation)}</p>`:""}${m.correction?`<p class="fix">✏️ ${esc(m.correction)}</p>`:""}${m.model?`<p class="fix" style="border-color:var(--yotsuba)">💬 Você pode dizer: <b>${esc(m.model)}</b></p>`:""}${m.learned?`<p class="small muted">🧠 ${esc(SIS[chatWho].name)} anotou: ${esc(m.learned)}</p>`:""}<div class="row"><button class="btn line" style="padding:4px 10px;font-size:.8rem" data-speak="${esc(m.reply)}">🔊 Ouvir</button></div>`);
 }
 async function sendChat(text,isHelp){
   if(!text||chatBusy||!sample)return;
-  chat.push(isHelp?{role:"user",text:"🤔 Não sei responder"}:{role:"user",text});
-  chat.push({role:"assistant",pending:true});chatBusy=true;vConversa();
-  const sys=`Você é ${SIS[chatWho].name} Nakano, de The Quintessential Quintuplets. Personalidade: ${SIS[chatWho].vibe}. Você conversa em inglês com um aluno brasileiro iniciante (lê melhor do que escuta e fala) para ele praticar. Regras: responda em inglês MUITO simples, 1 a 2 frases curtas, e termine com uma pergunta fácil para ele continuar. Não fale de conteúdo adulto. Se a mensagem dele tiver erro de inglês ou palavras em português, mostre a forma correta em "correction" (em português, curto e gentil, citando a frase certa em inglês); se estiver certa, deixe "correction" vazio. Se ele pedir ajuda, dê em "model" uma resposta modelo simples. Responda SOMENTE com JSON: {"reply":string,"translation":string (tradução da sua reply para português),"correction":string,"corrected":string (a mensagem do aluno reescrita em inglês correto; vazio se já estiver certa),"model":string}`;
-  const hist=chat.filter(m=>!m.pending).slice(-12);
+  loadChat();const who=chatWho,mem=memList();
+  chat.push(isHelp?{role:"user",text:HELP_MARK,date:dkey()}:{role:"user",text:text.slice(0,600),date:dkey()});
+  chatBusy=true;saveChat();vConversa();
+  const memTxt=mem.length?`O que você já sabe sobre o aluno (lembranças suas, de conversas anteriores): ${mem.map(f=>"- "+f).join("\n")}\nUse essas lembranças com naturalidade quando fizer sentido (por exemplo, perguntar sobre algo que ele contou), sem repetir tudo.`:"Você ainda não sabe nada sobre o aluno.";
+  const sys=`Você é ${SIS[who].name} Nakano, de The Quintessential Quintuplets. Personalidade: ${SIS[who].vibe}. Você conversa em inglês com um aluno brasileiro iniciante (lê melhor do que escuta e fala) para ele praticar. Hoje é ${new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}.
+${memTxt}
+Regras: responda em inglês MUITO simples, 1 a 2 frases curtas, e termine com uma pergunta fácil para ele continuar. Não fale de conteúdo adulto. Se a mensagem dele tiver erro de inglês ou palavras em português, mostre a forma correta em "correction" (em português, curto e gentil, citando a frase certa em inglês); se estiver certa, deixe "correction" vazio. Se ele pedir ajuda, dê em "model" uma resposta modelo simples.
+Memória: se a ÚLTIMA mensagem do aluno revelar algo novo e útil sobre ele (nome, idade, gostos, rotina, família, planos, sentimentos, acontecimentos), escreva em "remember" frases curtas em português na terceira pessoa (ex.: "Gosta de futebol", "Tem prova de matemática na sexta"). Não repita o que você já sabe. Se não houver nada novo, use [].
+Responda SOMENTE com JSON: {"reply":string,"translation":string (tradução da sua reply para português),"correction":string,"corrected":string (a mensagem do aluno reescrita em inglês correto; vazio se já estiver certa),"model":string,"remember":[string]}`;
+  const hist=chat.slice(-12);
   const msgs=[{role:"user",content:sys+"\n\nComece a conversa."}];
-  for(const m of hist){if(m.role==="assistant")msgs.push({role:"assistant",content:JSON.stringify({reply:m.reply})});else msgs.push({role:"user",content:m.text==="🤔 Não sei responder"?text:m.text})}
-  if(msgs[msgs.length-1].role!=="user")msgs.push({role:"user",content:text});
+  for(const m of hist){if(m.role==="assistant")msgs.push({role:"assistant",content:JSON.stringify({reply:m.reply})});else{const c=m.text===HELP_MARK?HELP_TXT:m.text;if(msgs[msgs.length-1].role==="user")msgs[msgs.length-1].content+="\n"+c;else msgs.push({role:"user",content:c})}}
+  let res;
   try{
     const r=await sample.json(msgs,{modelTier:"quick",cache:false});
-    chat.pop();chat.push({role:"assistant",reply:String(r.reply||"…"),translation:String(r.translation||""),correction:String(r.correction||""),model:String(r.model||"")});
+    const newMem=(Array.isArray(r.remember)?r.remember:[]).map(x=>String(x).trim()).filter(x=>x&&x.length<160&&!mem.some(f=>f.toLowerCase()===x.toLowerCase())).slice(0,3);
+    if(newMem.length){mem.push(...newMem);if(mem.length>25)mem.splice(0,mem.length-25)}
+    res={role:"assistant",reply:String(r.reply||"…"),translation:String(r.translation||""),correction:String(r.correction||""),model:String(r.model||""),learned:newMem.join(" · "),date:dkey()};
     ensureS();if(!isHelp){if(r.correction){S.stats.convRun=0;addError({src:"conversa",wrong:text,right:String(r.corrected||"").trim(),note:String(r.correction)})}else{S.stats.convRun=(S.stats.convRun||0)+1;S.stats.convBest=Math.max(S.stats.convBest||0,S.stats.convRun)}}
-    gain(3,"conversa",chatWho);
-  }catch(e){chat.pop();chat.push({role:"assistant",reply:"(…)",translation:e&&e.code==="rate_limited"?"Muitas mensagens seguidas. Espere um pouco e tente de novo.":"Não consegui responder agora. Tente enviar de novo.",correction:""})}
-  chatBusy=false;vConversa();if(!isHelp){const ta=$("#say");if(ta)ta.value=""}
+    gain(3,"conversa",who);
+  }catch(e){res={role:"assistant",reply:"(…)",translation:e&&e.code==="rate_limited"?"Muitas mensagens seguidas. Espere um pouco e tente de novo.":"Não consegui responder agora. Tente enviar de novo.",correction:"",date:dkey(),failed:true}}
+  const prev=chatWho;chatWho=who;loadChat();chat.push(res);saveChat();chatWho=prev;
+  chatBusy=false;if(tab==="conversa"){vConversa();if(!isHelp){const ta=$("#say");if(ta)ta.value=""}}
 }
 
 /* ---------- ÔNIBUS (escuta + ditado) ---------- */
@@ -892,7 +915,7 @@ addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(h!==tab&&(T
     const remote={};ds.docs.forEach(x=>{const v=x.data();if(v)remote[x.id]=JSON.parse(JSON.stringify(v))});
     for(const k in DAYS){if(!remote[k]||(remote[k].xp||0)<(DAYS[k].xp||0)){remote[k]=DAYS[k];saveDay(k)}}
     DAYS=remote;ensureS();lsSave();
-    if(!lesson&&!vn&&!rv&&!(tab==="teste"&&testState&&testState.i>=0)&&!(tab==="conversa"&&(chat.length>1||sh)))render();
+    if(!lesson&&!vn&&!rv&&!(tab==="teste"&&testState&&testState.i>=0)&&!(tab==="conversa"&&(chatBusy||sh)))render();
   }catch(e){clearTimeout(timer);console.warn("db",e)}
 })();
 </script>
